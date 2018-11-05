@@ -7,7 +7,7 @@ then
 fi
 number_samples=$1
 dirname=$2
-num=$3
+num=`expr $3 - 1`
 init=0
 if [ $# -eq 4 ]
 then

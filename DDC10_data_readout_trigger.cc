@@ -54,7 +54,7 @@ ifstream fin;
 bool signal_start = false;
 bool debug_mode = false;
 //define pulse finding parameters
-double pulseThresh =8.0 ;
+double pulseThresh =3.0 ;
 double windowSize = 3.0;
 double edgeThresh = 3.0;
 double lookforward = 3.0;
@@ -80,6 +80,7 @@ vector<double> pl;
 vector<double> pr;
 vector<double> trigger_time;
 vector<double> CalibratedTime;
+vector<double> windowratio;
 
 int number_of_samples;
 // Simpson Integral
@@ -139,6 +140,7 @@ void extract_event(vector<double> &v, double b ,double rms,int nos,int trigger){
 
             integral = 1.0e9;
             right = i + windowSize;
+            double thischarge = 0;
             bool end=false;
             while (!end){
                 while (integral > eThresh && right<number_of_samples-1){
@@ -170,6 +172,21 @@ void extract_event(vector<double> &v, double b ,double rms,int nos,int trigger){
             }
             if (right >nos)
                 continue;
+
+			// noise veto
+			int width = right - left;
+			int nright = right + width;
+			int nleft = left - width;
+			if(nright>nos){
+				nright = nos;
+				nleft -= (nleft>width ? width : 0);
+			}
+			if(nleft<0){
+				nleft = 0;
+				nright += (nright<(nos-width) ? width : nos);
+			}
+			double dratio = SimpsIntegral(v,b,nleft,nright)/SimpsIntegral(v,b,left,right);
+
             //cout<<" Peak is : "<<temp_peak<<" max is : "<<max<<endl;
             if (signal_start){
                 amplitude.push_back(max);
@@ -180,12 +197,14 @@ void extract_event(vector<double> &v, double b ,double rms,int nos,int trigger){
                 startv.push_back(temp_startv);
                 endv.push_back(temp_endv);
                 CalibratedTime.push_back(temp_peak-trigger);
+				windowratio.push_back(dratio);
             }
 
             pulse_left_edge.push_back(left);
             pulse_right_edge.push_back(right);
 
             //if (temp_peak>0 &&temp_peak<8000){
+            //if (thischarge<1.0)
 		    number_of_peaks ++;
             //}
             //cout<<" This is sample : "<<i<<" Charge integral is : "<<SimpsIntegral(v,b,left,right)<<endl;
@@ -394,6 +413,7 @@ int main(int argc, char *argv[]){
     h->GetYaxis()->SetLabelFont(132);
     //Tetsing the dark hit counter
     TH1F* dark_hits = new TH1F("dark_hits","dark_hits",100,0,10);
+    TH2F* dark_hits2d = new TH2F("dark_hits2d","dark_hits2d;hits;area",100,0,10,500,0,20);
     //dark_hits->SetBit(TH1::kCanRebin);
 
     //Create Ntuple to store properties of pulses found by pulse finder
@@ -421,6 +441,8 @@ int main(int argc, char *argv[]){
                 if (sweep>0){
                     // For counting dark rate
                     dark_hits->Fill(number_of_peaks);
+                    for (int cv=0;cv<charge_v.size();cv++)
+                    	dark_hits2d->Fill(number_of_peaks,charge_v[cv]);
                     number_of_peaks = 0.0;
 
                     rms_value = baseline_rms(baselinev,raw_waveform,number_of_samples,trigger_time[sweep-1]);// Calculate baseline and rms then pass to pulse finder
@@ -505,16 +527,13 @@ int main(int argc, char *argv[]){
 
             }
 
-
-
-
         }
     }
 
     //Fill Ntuple
     //pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime
     for (int i=0;i<amplitude.size();i++){
-        pulse->Fill(amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i]);
+        pulse->Fill(amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],windowratio[i]);
     }
     TGraph* baseline_plot = new TGraph();
     for (int i=0;i<baseline_sweep.size();i++){
