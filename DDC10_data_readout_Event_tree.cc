@@ -89,7 +89,7 @@ vector<double> event_baseline;
 vector<double> event_rms;
 int number_of_samples;
 // Simpson Integral
-double SimpsIntegral(const vector<double>& samples, double baseline,int start, int end){
+double SimpsIntegral(const vector<float>& samples, double baseline,int start, int end){
     int len;
     double qsum = 0.0;
     if ((end - start) % 2 == 0){
@@ -119,7 +119,7 @@ double SimpsIntegral(const vector<double>& samples, double baseline,int start, i
 
 
 // Pulse Finding
-void extract_event(vector<double> &v, double b ,double rms,int nos,int trigger){
+void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger){
     //double pThresh = pulseThresh * rms * sqrt(windowSize);
     double pThresh = fix_threshold;
     double eThresh = edgeThresh * rms * sqrt(windowSize);
@@ -232,7 +232,7 @@ void extract_event(vector<double> &v, double b ,double rms,int nos,int trigger){
     event_charge.push_back(temp_charge);
 }
 // Find the baseline
-double baseline_rms(vector<double> &v, vector<double> &sample, int nosamples,int ttime = 0){
+double baseline_rms(vector<double> &v, vector<float> &sample, int nosamples,int ttime = 0){
     double rms=0;
     double temp_base = 0;
     //double baseline_samples = accumulate(v.begin(),v.end(),0);

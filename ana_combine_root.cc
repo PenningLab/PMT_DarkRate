@@ -58,6 +58,7 @@ static void show_usage(string name){
     <<" -wd : Working directory\n"
     <<" -od : Output directory\n"
     <<" -ct : Charge threshold for dark rate\n"
+	<<" -t : Use temperature measurements\n"
     <<" -debug : Get in the debugging mode.\n"
     <<" -h or --help : Show the usage\n"
     <<" Enjoy ! -Ryan Wang"<<endl;
@@ -134,7 +135,7 @@ int main(int argc, char *argv[]){
 		vector<double> rtd4;
 
 	std::vector<float> raw_waveforms;
-    TTree* tree,wforms;
+    TTree* tree,*wforms;
     TTree* event_tree;
 	double num_sweeps;
     cout<<"start looping"<<endl;
