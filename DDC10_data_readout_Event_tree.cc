@@ -65,7 +65,7 @@ int baseline_samples_set = 160;
 
 
 //vector<int> run_info;
-vector<double> raw_waveform;
+vector<float> raw_waveform;
 vector<double> amplitude;
 vector<double> charge_v;
 vector<double> startv;
@@ -81,6 +81,7 @@ vector<double> pl;
 vector<double> pr;
 vector<double> trigger_time;
 vector<double> CalibratedTime;
+vector<double> windowratio;
 
 vector<double> event_charge;
 vector<double> event_charge_ten;
@@ -179,6 +180,21 @@ void extract_event(vector<double> &v, double b ,double rms,int nos,int trigger){
             }
             if (right >nos)
                 continue;
+
+			// noise veto
+			int width = right - left;
+			int nright = right + width;
+			int nleft = left - width;
+			if(nright>nos){
+				nright = nos;
+				nleft -= (nleft>width ? width : 0);
+			}
+			if(nleft<0){
+				nleft = 0;
+				nright += (nright<(nos-width) ? width : nos);
+			}
+			double dratio = SimpsIntegral(v,b,nleft,nright)/SimpsIntegral(v,b,left,right);
+
             //cout<<" Peak is : "<<temp_peak<<" max is : "<<max<<endl;
             if (signal_start){
                 amplitude.push_back(max);
@@ -189,6 +205,7 @@ void extract_event(vector<double> &v, double b ,double rms,int nos,int trigger){
                 startv.push_back(temp_startv);
                 endv.push_back(temp_endv);
                 CalibratedTime.push_back(temp_peak-trigger);
+				windowratio.push_back(dratio);
                 temp_charge +=SimpsIntegral(v,b,left,right);
                 if (i<300)
                     temp_ten_charge += SimpsIntegral(v,b,left,right);
@@ -412,8 +429,11 @@ int main(int argc, char *argv[]){
     //dark_hits->SetBit(TH1::kCanRebin);
 
     //Create Ntuple to store properties of pulses found by pulse finder
-    TNtuple *pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime");
+    TNtuple *pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:windowratio");
     TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms");
+	TTree *wforms_tree = new TTree("waveforms","Waveform Tree");
+	//float waveforms[8192];
+	wforms_tree->Branch("pmt_waveforms",&raw_waveform);
     // Store the waveform plot for debugging
     TCanvas *waveplot[100];
     vector<double> baseline_sweep;
@@ -438,7 +458,7 @@ int main(int argc, char *argv[]){
                     // For counting dark rate
                     dark_hits->Fill(number_of_peaks);
                     number_of_peaks = 0.0;
-
+					wforms_tree->Fill();
                     rms_value = baseline_rms(baselinev,raw_waveform,number_of_samples);// Calculate baseline and rms then pass to pulse finder
 		            baseline_sweep.push_back(rms_value);// save baseline for checking baseline shifting
                     //cout<<"This is sweep : "<<sweep<<" baseline is : "<<rms_value<<endl;
@@ -521,16 +541,13 @@ int main(int argc, char *argv[]){
 
             }
 
-
-
-
         }
     }
 
     //Fill Ntuple
     //pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime
     for (int i=0;i<amplitude.size();i++){
-        pulse->Fill(amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i]);
+        pulse->Fill(amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],windowratio[i]);
     }
     TGraph* baseline_plot = new TGraph();
     for (int i=0;i<baseline_sweep.size();i++){
@@ -545,8 +562,6 @@ int main(int argc, char *argv[]){
     baseline_plot->Draw("AP");
 
     cout<<" Total sweeps is : "<<sweep<<endl;
-
-
 
 
     pulse->Write();

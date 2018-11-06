@@ -99,7 +99,7 @@ int main(int argc, char *argv[]){
         else if (arg=="-ct"){
             charge_threshold = atof(argv[i+1]);
         }
-				else if (arg=="-t"){
+		else if (arg=="-t"){
             use_temp = true;
         }
 	else if (arg=="-e"){
@@ -116,12 +116,12 @@ int main(int argc, char *argv[]){
     char out_path [320];
     sprintf(out_path,"%s/%s",out_dir.c_str(),outfilename.c_str());
     TFile *fout = new TFile(out_path,"RECREATE");
-    TNtuple *pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:Run");
+    TNtuple *pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:windowRatio:Run");
     //if (event_tree_enable){
     	TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms");
     //}
     // variables
-    float pulseHeight=0,pulseRightEdge=0,pulseLeftEdge=0,pulseCharge=0,pulsePeakTime=0,CalibratedTime=0;
+    float pulseHeight=0,pulseRightEdge=0,pulseLeftEdge=0,pulseCharge=0,pulsePeakTime=0,CalibratedTime=0,windowRatio=0;
     float charge=0,charge_frac=0,baseline=0,rms=0;
     //int run=0;
     vector<double> dark_count;
@@ -132,8 +132,11 @@ int main(int argc, char *argv[]){
 		vector<double> rtd2;
 		vector<double> rtd3;
 		vector<double> rtd4;
-    TTree* tree;
+
+	std::vector<float> raw_waveforms;
+    TTree* tree,wforms;
     TTree* event_tree;
+	double num_sweeps;
     cout<<"start looping"<<endl;
     for (int i=0;i<number_of_files;i++){
         char root_file_name [320];
@@ -145,6 +148,9 @@ int main(int argc, char *argv[]){
         }
         else{
             tree = (TTree*) fin->Get("pulse");
+			wforms = (TTree*) fin->Get("pmt_waveforms");
+			num_sweeps=wforms->GetEntries();
+			wforms->clear();
 	    if (event_tree_enable){
 	    	event_tree = (TTree*) fin->Get("event");
 		cout<<" event tree enabled "<<endl;
@@ -154,12 +160,10 @@ int main(int argc, char *argv[]){
         dark_count.push_back(dark_hit->GetMean());
         dark_count_error.push_back(dark_hit->GetMeanError());
 
-        TH2F* dark_hit2d = (TH2F*) fin->Get("dark_hits2d");
-	if(charge_threshold!=-1){
-		dark_hit2d->GetYaxis()->SetRange(0,dark_hit2d->GetYaxis()->FindBin(charge_threshold));
-		dark_countcut.push_back(dark_hit2d->GetMean(1));
-		dark_countcut_error.push_back(dark_hit2d->GetMean(11));
-	}
+		if(charge_threshold!=-1){
+			dark_countcut.push_back(0);
+			dark_countcut_error.push_back(0);
+		}
 			if(use_temp){
 				double n,irtd1,irtd2,irtd3,irtd4;
 				temp_file >> n >> irtd1 >> irtd2 >> irtd3 >> irtd4;
@@ -187,9 +191,16 @@ int main(int argc, char *argv[]){
 
         for (int j=0;j<nument;j++){
             tree->GetEntry(j);
-            pulse->Fill(pulseHeight,pulseRightEdge,pulseLeftEdge,pulseCharge,pulsePeakTime,CalibratedTime,i);
+            pulse->Fill(pulseHeight,pulseRightEdge,pulseLeftEdge,pulseCharge,pulsePeakTime,CalibratedTime,windowRatio,i);
+			if(charge_threshold!=-1){
+				dark_countcut.back()++;
+			}
             //cout<<" This is root file : "<<i<<" we are reading entry : "<<j<<" with pulseHeight : "<<pulseHeight<<endl;
         }
+		if(charge_threshold!=-1){
+			dark_countcut_error.back()=num_sweeps/sqrt(dark_countcut.back());
+			dark_countcut.back()*=1.0/num_sweeps;
+		}
 	if (event_tree_enable){
 		for (int j =0;j<event_tree->GetEntries();j++){
 			event_tree->GetEntry(j);
@@ -201,7 +212,7 @@ int main(int argc, char *argv[]){
     fout->cd();
 
     TGraphErrors* dark_plot = new TGraphErrors();
-		
+
     for (int h=0;h<dark_count.size();h++){
         double temp_dark_rate = dark_count[h]*1E6/80;
         double temp_dark_rate_error = dark_count_error[h]*1E6/80;
@@ -228,7 +239,7 @@ int main(int argc, char *argv[]){
 					prtd3->SetPointError(h,0,temp_dark_rate_error);
 					prtd4->SetPointError(h,0,temp_dark_rate_error);
 				}
-			
+
 			prtd1->Sort();
 			prtd2->Sort();
 			prtd3->Sort();
@@ -243,7 +254,7 @@ int main(int argc, char *argv[]){
 			prtd2->SetTitle("RTD2;Temp [C];DarkRate (Hz)");
 			prtd3->SetTitle("RTD3;Temp [C];DarkRate (Hz)");
 			prtd4->SetTitle("RTD4;Temp [C];DarkRate (Hz)");
-			
+
 			prtd1->Write(); prtd2->Write(); prtd3->Write(); prtd4->Write();
 		}
     dark_plot->SetName("dark_plotraw");

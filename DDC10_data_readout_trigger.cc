@@ -64,7 +64,7 @@ int baseline_samples_set = 160;
 
 
 //vector<int> run_info;
-vector<double> raw_waveform;
+vector<float> raw_waveform;
 vector<double> amplitude;
 vector<double> charge_v;
 vector<double> startv;
@@ -413,11 +413,16 @@ int main(int argc, char *argv[]){
     h->GetYaxis()->SetLabelFont(132);
     //Tetsing the dark hit counter
     TH1F* dark_hits = new TH1F("dark_hits","dark_hits",100,0,10);
-    TH2F* dark_hits2d = new TH2F("dark_hits2d","dark_hits2d;hits;area",100,0,10,500,0,20);
     //dark_hits->SetBit(TH1::kCanRebin);
 
     //Create Ntuple to store properties of pulses found by pulse finder
-    TNtuple *pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime");
+    TNtuple *pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:windowratio");
+    TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms");
+	TTree *wforms_tree = new TTree("waveforms","Waveform Tree");
+	//float waveforms[8192];
+	float trigger_t;
+	wforms_tree->Branch("pmt_waveforms",&raw_waveform);
+	wforms_tree->Branch("trigger_time",&trigger_t,"trigger_t/F");
     // Store the waveform plot for debugging
     TCanvas *waveplot[100];
     vector<double> baseline_sweep;
@@ -441,11 +446,10 @@ int main(int argc, char *argv[]){
                 if (sweep>0){
                     // For counting dark rate
                     dark_hits->Fill(number_of_peaks);
-                    for (int cv=0;cv<charge_v.size();cv++)
-                    	dark_hits2d->Fill(number_of_peaks,charge_v[cv]);
                     number_of_peaks = 0.0;
-
-                    rms_value = baseline_rms(baselinev,raw_waveform,number_of_samples,trigger_time[sweep-1]);// Calculate baseline and rms then pass to pulse finder
+					trigger_t = trigger_time[sweep-1];
+					wforms_tree->Fill();
+                    rms_value = baseline_rms(baselinev,raw_waveform,number_of_samples,trigger_t);// Calculate baseline and rms then pass to pulse finder
 		            baseline_sweep.push_back(rms_value);// save baseline for checking baseline shifting
                     //cout<<"This is sweep : "<<sweep<<" baseline is : "<<rms_value<<endl;
                     //getchar();
@@ -511,7 +515,7 @@ int main(int argc, char *argv[]){
                     //if (isinf(datum) || isnan(datum) || datum > 200000 || datum<-1){
                     //    datum=0;
                     //}
-                    if (pcount<2000){
+                    if (pcount<100){
                         //if (debug_mode)
                         //    cout<<" Raw data is for baseline : "<<datum<<endl;
                         baselinev.push_back(datum);
@@ -539,14 +543,15 @@ int main(int argc, char *argv[]){
     for (int i=0;i<baseline_sweep.size();i++){
         baseline_plot->SetPoint(i,i,baseline_sweep[i]);
     }
+    for (int i=0;i<event_charge.size();i++){
+            event->Fill(event_charge[i],event_charge_ten[i],event_baseline[i],event_rms[i]);
+    }
     //Baseline plot
     TCanvas* bplot = new TCanvas("bplot","bplot");
     baseline_plot->SetMarkerStyle(22);
     baseline_plot->Draw("AP");
 
     cout<<" Total sweeps is : "<<sweep<<endl;
-
-
 
 
     pulse->Write();
