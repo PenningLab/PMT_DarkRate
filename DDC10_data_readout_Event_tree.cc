@@ -433,7 +433,7 @@ int main(int argc, char *argv[]){
     TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms");
 	TTree *wforms_tree = new TTree("waveforms","Waveform Tree");
 	float waveforms[8192];
-	wforms_tree->Branch("pmt_waveforms",waveforms[0],TString::Format("waveforms[%i]/F",number_samples));
+	wforms_tree->Branch("pmt_waveforms",waveforms[0],TString::Format("waveforms[%i]/F",number_of_samples));
     // Store the waveform plot for debugging
     TCanvas *waveplot[100];
     vector<double> baseline_sweep;
