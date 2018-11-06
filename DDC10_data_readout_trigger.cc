@@ -224,7 +224,7 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger){
     //getchar();
 }
 // Find the baseline
-double baseline_rms(vector<float> &v, vector<double> &sample, int nosamples,int ttime){
+double baseline_rms(vector<double> &v, vector<float> &sample, int nosamples,int ttime){
     double rms=0;
     double temp_base = 0;
     //double baseline_samples = accumulate(v.begin(),v.end(),0);
