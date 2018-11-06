@@ -432,8 +432,8 @@ int main(int argc, char *argv[]){
     TNtuple *pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:windowratio");
     TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms");
 	TTree *wforms_tree = new TTree("waveforms","Waveform Tree");
-	//float waveforms[8192];
-	wforms_tree->Branch("pmt_waveforms",&raw_waveform);
+	float waveforms[8192];
+	wforms_tree->Branch("pmt_waveforms",waveforms[0],TString::Format("waveforms[%i]/F",number_samples));
     // Store the waveform plot for debugging
     TCanvas *waveplot[100];
     vector<double> baseline_sweep;
@@ -458,6 +458,7 @@ int main(int argc, char *argv[]){
                     // For counting dark rate
                     dark_hits->Fill(number_of_peaks);
                     number_of_peaks = 0.0;
+					std::copy(raw_waveform.begin(),raw_waveform.end(),waveforms);
 					wforms_tree->Fill();
                     rms_value = baseline_rms(baselinev,raw_waveform,number_of_samples);// Calculate baseline and rms then pass to pulse finder
 		            baseline_sweep.push_back(rms_value);// save baseline for checking baseline shifting
@@ -563,7 +564,7 @@ int main(int argc, char *argv[]){
 
     cout<<" Total sweeps is : "<<sweep<<endl;
 
-
+	wforms_tree->Write();
     pulse->Write();
     bplot->Write();
     fout->Write();
