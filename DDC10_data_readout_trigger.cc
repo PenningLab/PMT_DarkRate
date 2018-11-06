@@ -425,7 +425,7 @@ int main(int argc, char *argv[]){
 	TTree *wforms_tree = new TTree("waveforms","Waveform Tree");
 	//float waveforms[8192];
 	float trigger_t;
-	wforms_tree->Branch("pmt_waveforms","std::vector",&raw_waveform);
+	wforms_tree->Branch("pmt_waveforms","std::vector<float>",&raw_waveform);
 	wforms_tree->Branch("trigger_time",&trigger_t,"trigger_t/F");
     // Store the waveform plot for debugging
     TCanvas *waveplot[100];
