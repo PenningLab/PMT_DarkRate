@@ -426,7 +426,7 @@ int main(int argc, char *argv[]){
 	float waveforms[8192];
 	float trigger_t;
 
-	wforms_tree->Branch("pmt_waveforms",waveforms[0],TString::Format("waveforms[%i]/F",number_of_samples));
+	wforms_tree->Branch("pmt_waveforms",&waveforms[0],TString::Format("waveforms[%i]/F",number_of_samples));
 	wforms_tree->Branch("trigger_time",&trigger_t,"trigger_t/F");
     // Store the waveform plot for debugging
     TCanvas *waveplot[100];
