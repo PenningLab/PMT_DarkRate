@@ -3,7 +3,7 @@ if [ $# -lt 3 ]
 then
  echo "Missing arguments!!! To run"
  echo "bash PMT_batch_no_Trigger.sh [number_of_sample] [working dir] [last file #] <-i [startingindex]> <-b [baseline_samples]> <-p [pulseThreshold]>"
- return
+ exit 1
 fi
 number_samples=$1
 dirname=$2
@@ -11,7 +11,8 @@ num=$3
 init=0
 bs=-1
 pth=-1
-while getopts ":i:b:p:" do
+while getopts ":i:b:p:"
+do
 	case ${opt} in
 		i )
 			init=$OPTARG
@@ -21,6 +22,7 @@ while getopts ":i:b:p:" do
 			;;
 		p )
 			pth=$OPTARG
+	esac
 done
 
 for j in `seq ${init} ${num}`
