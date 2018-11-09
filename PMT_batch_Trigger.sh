@@ -9,16 +9,24 @@ number_samples=$1
 dirname=$2
 num=$3
 init=0
-bs=-1
-while getopts ":i:b:e"
-do
-	case ${opt} in
+bsam=-1
+pth=-1
+shift 3
+while getopts 'i:b:p:' opt; do
+	case "${opt}" in
 		i )
-			init=$OPTARG
+			init=${OPTARG}
+			echo "initial file is ${init}"
 			;;
 		b )
-			bs=$OPTARG
+			bsam=${OPTARG}
+			echo "using ${bsam} baseline samples"
 			;;
+		p )
+			pth=${OPTARG}
+			echo "pulsethreshold is ${pth}"
+			;;
+
 	esac
 done
 
@@ -26,10 +34,10 @@ for j in `seq ${init} ${num}`
 do
  cmdarr=(./DDC10_data_readout -wd ${dirname} -i ${j}_PMT.txt -t ${j}_Trigger.txt -o ${j}_PMT_Trigger.root -n ${number_samples})
 
- if [ ${bs} -ne -1 ]; then
-  cmdarr+=(-b ${bs})
+ if [ "${bsam}" -ne -1 ]; then
+  cmdarr+=(-bs ${bsam})
  fi
- if [ ${pth} -ne -1 ]; then
+ if [ "${pth}" -ne -1 ]; then
   cmdarr+=(-pt ${pth})
  fi
  echo "${cmdarr[@]}"

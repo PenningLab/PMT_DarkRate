@@ -397,7 +397,7 @@ int main(int argc, char *argv[]){
             triggerfilename = argv[i+1];
 			use_trigger = true;
         }
-		else if (arg=="-b"){
+		else if (arg=="-bs"){
             baseline_samples_set = atoi(argv[i+1]);
         }
 		else if (arg=="-pt"){
