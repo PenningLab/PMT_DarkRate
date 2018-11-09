@@ -53,6 +53,7 @@ using namespace std;
 ifstream fin;
 bool signal_start = false;
 bool debug_mode = false;
+int current_sweep = 0;
 //define pulse finding parameters
 double pulseThresh =8.0 ;
 double windowSize = 3.0;
@@ -82,6 +83,8 @@ vector<double> pr;
 vector<double> trigger_time;
 vector<double> CalibratedTime;
 vector<double> windowratio;
+vector<double> sweep_rms;
+vector<int> sweep_n;
 
 vector<double> event_charge;
 vector<double> event_charge_ten;
@@ -182,7 +185,7 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger){
                 continue;
 
 			// noise veto
-			int width = right - left;
+	    int width = 5*(right - left);
 			int nright = right + width;
 			int nleft = left - width;
 			if(nright>nos){
@@ -206,6 +209,8 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger){
                 endv.push_back(temp_endv);
                 CalibratedTime.push_back(temp_peak-trigger);
 				windowratio.push_back(dratio);
+				sweep_n.push_back(current_sweep);
+				sweep_rms.push_back(b);
                 temp_charge +=SimpsIntegral(v,b,left,right);
                 if (i<300)
                     temp_ten_charge += SimpsIntegral(v,b,left,right);
@@ -337,7 +342,7 @@ double baseline_rms(vector<double> &v, vector<float> &sample, int nosamples,int 
         }
     }
     fint.close();
-}*/
+    }*/
 static void show_usage(string name){
     cout<<" Usage : ./DDC10_data_readout [-co] file1 "<<name<<" Options:\n"
     <<" -o : Name of output file.\n"
@@ -355,7 +360,7 @@ int main(int argc, char *argv[]){
     string outfilename;
     string triggerfilename;
     string working_dir;
-
+    bool use_trigger = false;
     bool trigger_inversion = false;
 
     if (argc<2){
@@ -381,6 +386,7 @@ int main(int argc, char *argv[]){
             outfilename = argv[i+1];
         }
         else if (arg=="-t"){
+            use_trigger = true;
             triggerfilename = argv[i+1];
         }
         else if (arg=="-trigger"){
@@ -390,8 +396,10 @@ int main(int argc, char *argv[]){
             debug_mode = true;
         }
     }
-    //cout<<" Before getting trigger info, trigger filename is : "<<triggerfilename<<endl;
-    //Trigger_info(triggerfilename,working_dir);
+    /*    if(use_trigger){
+    cout<<" Before getting trigger info, trigger filename is : "<<triggerfilename<<endl;
+    Trigger_info(triggerfilename,working_dir);
+    }*/
 
 
     // Plots for debugging pulse finding algorithm
@@ -429,11 +437,14 @@ int main(int argc, char *argv[]){
     //dark_hits->SetBit(TH1::kCanRebin);
 
     //Create Ntuple to store properties of pulses found by pulse finder
-    TNtuple *pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:windowratio");
+    TNtuple *pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:sweep");
     TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms");
 	TTree *wforms_tree = new TTree("waveforms","Waveform Tree");
 	float waveforms[8192];
+	float trigger_t;
+
 	wforms_tree->Branch("pmt_waveforms",&waveforms[0],TString::Format("waveforms[%i]/F",number_of_samples));
+	//	if(use_trigger) wforms_tree->Branch("trigger_time",&trigger_t,"trigger_t/F");
     // Store the waveform plot for debugging
     TCanvas *waveplot[100];
     vector<double> baseline_sweep;
@@ -457,9 +468,11 @@ int main(int argc, char *argv[]){
                 if (sweep>0){
                     // For counting dark rate
                     dark_hits->Fill(number_of_peaks);
+		    //          if(use_trigger) trigger_t=trigger_time[sweep-1];
                     number_of_peaks = 0.0;
-					std::copy(raw_waveform.begin(),raw_waveform.end(),waveforms);
-					wforms_tree->Fill();
+		    std::copy(raw_waveform.begin(),raw_waveform.end(),waveforms);
+		    current_sweep = sweep-1;
+		    wforms_tree->Fill();
                     rms_value = baseline_rms(baselinev,raw_waveform,number_of_samples);// Calculate baseline and rms then pass to pulse finder
 		            baseline_sweep.push_back(rms_value);// save baseline for checking baseline shifting
                     //cout<<"This is sweep : "<<sweep<<" baseline is : "<<rms_value<<endl;
@@ -548,7 +561,7 @@ int main(int argc, char *argv[]){
     //Fill Ntuple
     //pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime
     for (int i=0;i<amplitude.size();i++){
-        pulse->Fill(amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],windowratio[i]);
+      pulse->Fill(amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],sweep_rms[i],windowratio[i],sweep_n[i]);
     }
     TGraph* baseline_plot = new TGraph();
     for (int i=0;i<baseline_sweep.size();i++){
@@ -564,7 +577,7 @@ int main(int argc, char *argv[]){
 
     cout<<" Total sweeps is : "<<sweep<<endl;
 
-	wforms_tree->Write();
+    wforms_tree->Write();
     pulse->Write();
     bplot->Write();
     fout->Write();

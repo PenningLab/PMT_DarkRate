@@ -1,25 +1,36 @@
-#!/bin/sh
-if [ $# -lt 2 ]
+#!/bin/bash
+if [ $# -lt 3 ]
 then
  echo "Missing arguments!!! To run"
- echo "bash One_trigger_PMT_batch.sh [number_of_sample] [dir] [# files] <starting index>"
- return 
+ echo "bash PMT_batch_Trigger.sh [number_of_sample] [dir] [last file #] <-i [startingindex]> <-b [baseline_samples]>"
+ return
 fi
 number_samples=$1
 dirname=$2
-num=`expr $3 - 1`
+num=$3
 init=0
-if [ $# -eq 4 ]
-then
- init=$4
- num=`expr ${init} + ${num}`
-fi
+bs=-1
+while getopts ":i:b:e" do
+	case ${opt} in
+		i )
+			init=$OPTARG
+			;;
+		b )
+			bs=$OPTARG
+			;;
+done
 
 for j in `seq ${init} ${num}`
 do
- #echo "starting file ${j}"
- echo "./DDC10_data_readout -wd ${dirname} -i ${j}.txt -o ${j}_${outfilename}.root"
- ./DDC10_data_readout_trigger -wd ${dirname} -i ${j}_PMT.txt -t ${j}_Trigger.txt -o ${j}_PMT_Trigger.root -n ${number_samples}
- echo "file ${j} complete"
-done
+ cmdarr=(./DDC10_data_readout -wd ${dirname} -i ${j}_PMT.txt -t ${j}_Trigger.txt -o ${j}_PMT_Trigger.root -n ${number_samples})
 
+ if [ ${bs} -ne -1 ]; then
+  cmdarr+=(-b ${bs})
+ fi
+ if [ ${pth} -ne -1 ]; then
+  cmdarr+=(-pt ${pth})
+ fi
+ echo "${cmdarr[@]}"
+ "${cmdarr[@]}"
+ #echo "file ${j} complete"
+done

@@ -58,7 +58,8 @@ static void show_usage(string name){
     <<" -wd : Working directory\n"
     <<" -od : Output directory\n"
     <<" -ct : Charge threshold for dark rate\n"
-	<<" -t : Use temperature measurements\n"
+    <<" -t : Use temperature measurements\n"
+    <<" -s : Number of sweeps\n"
     <<" -debug : Get in the debugging mode.\n"
     <<" -h or --help : Show the usage\n"
     <<" Enjoy ! -Ryan Wang"<<endl;
@@ -72,10 +73,12 @@ int main(int argc, char *argv[]){
     bool event_tree_enable = false;
 		bool use_temp = false;
     float charge_threshold = -1;
+    double num_sweeps=-1;
     if (argc<2){
         show_usage(argv[0]);
         return 1;
     }
+    cout<<"loading in arguments"<<endl;
     for (int i=1;i<argc;++i){
         string arg = argv[i];
         if ((arg=="-h") || (arg=="--help")){
@@ -100,12 +103,19 @@ int main(int argc, char *argv[]){
         else if (arg=="-ct"){
             charge_threshold = atof(argv[i+1]);
         }
+        else if (arg=="-s"){
+            num_sweeps = atof(argv[i+1]);
+        }
 		else if (arg=="-t"){
             use_temp = true;
         }
 	else if (arg=="-e"){
 		event_tree_enable = true;
 	}
+    }
+    if(charge_threshold!=-1 && num_sweeps==-1){
+       cout<<"If using charge cut, number of sweeps (-s [nos]) is required"<<endl;
+       return 1;
     }
     if (out_dir=="") out_dir = working_dir;
     ifstream temp_file;
@@ -116,14 +126,16 @@ int main(int argc, char *argv[]){
 		}
     char out_path [320];
     sprintf(out_path,"%s/%s",out_dir.c_str(),outfilename.c_str());
+    cout<<"Creating output file"<<endl;
     TFile *fout = new TFile(out_path,"RECREATE");
-    TNtuple *pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:windowRatio:Run");
+    TNtuple *pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:Run:sweep");
     //if (event_tree_enable){
     	TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms");
     //}
     // variables
-    float pulseHeight=0,pulseRightEdge=0,pulseLeftEdge=0,pulseCharge=0,pulsePeakTime=0,CalibratedTime=0,windowRatio=0;
+	float pulseHeight=0,pulseRightEdge=0,pulseLeftEdge=0,pulseCharge=0,pulsePeakTime=0,CalibratedTime=0,windowRatio=0,baselinerms=0,sweep=0;
     float charge=0,charge_frac=0,baseline=0,rms=0;
+    //    short int sweep=0;
     //int run=0;
     vector<double> dark_count;
     vector<double> dark_count_error;
@@ -137,11 +149,11 @@ int main(int argc, char *argv[]){
 	std::vector<float> raw_waveforms;
     TTree* tree,*wforms;
     TTree* event_tree;
-	double num_sweeps;
     cout<<"start looping"<<endl;
     for (int i=0;i<number_of_files;i++){
         char root_file_name [320];
         sprintf(root_file_name,"%s/%u_%s",working_dir.c_str(),i,filename.c_str());
+        cout<<"Reading in file"<<endl;
         TFile *fin = new TFile(root_file_name,"READ");
         if (fin == NULL){
             cout<<" File is corrupted ! "<<endl;
@@ -149,9 +161,6 @@ int main(int argc, char *argv[]){
         }
         else{
             tree = (TTree*) fin->Get("pulse");
-			wforms = (TTree*) fin->Get("pmt_waveforms");
-			num_sweeps=wforms->GetEntries();
-			wforms->clear();
 	    if (event_tree_enable){
 	    	event_tree = (TTree*) fin->Get("event");
 		cout<<" event tree enabled "<<endl;
@@ -173,13 +182,16 @@ int main(int argc, char *argv[]){
 				rtd3.push_back(irtd3);
 				rtd4.push_back(irtd4);
 			}
-
+	cout<<"Loading tree branches"<<endl;
         tree->SetBranchAddress("pulseHeight",&pulseHeight);
         tree->SetBranchAddress("pulseRightEdge",&pulseRightEdge);
         tree->SetBranchAddress("pulseLeftEdge",&pulseLeftEdge);
         tree->SetBranchAddress("pulseCharge",&pulseCharge);
         tree->SetBranchAddress("pulsePeakTime",&pulsePeakTime);
         tree->SetBranchAddress("CalibratedTime",&CalibratedTime);
+        tree->SetBranchAddress("windowratio",&windowRatio);
+	tree->SetBranchAddress("baselinerms",&baselinerms);
+	tree->SetBranchAddress("sweep",&sweep);
         cout<<" processing root file No. "<<i<<endl;
 
 	if (event_tree_enable){
@@ -192,15 +204,15 @@ int main(int argc, char *argv[]){
 
         for (int j=0;j<nument;j++){
             tree->GetEntry(j);
-            pulse->Fill(pulseHeight,pulseRightEdge,pulseLeftEdge,pulseCharge,pulsePeakTime,CalibratedTime,windowRatio,i);
+            pulse->Fill(pulseHeight,pulseRightEdge,pulseLeftEdge,pulseCharge,pulsePeakTime,CalibratedTime,baselinerms,windowRatio,i,sweep);
 			if(charge_threshold!=-1){
 				dark_countcut.back()++;
 			}
             //cout<<" This is root file : "<<i<<" we are reading entry : "<<j<<" with pulseHeight : "<<pulseHeight<<endl;
         }
 		if(charge_threshold!=-1){
-			dark_countcut_error.back()=num_sweeps/sqrt(dark_countcut.back());
-			dark_countcut.back()*=1.0/num_sweeps;
+			dark_countcut_error[i]=num_sweeps/sqrt(dark_countcut[i]);
+			dark_countcut[i]*=1.0/num_sweeps;
 		}
 	if (event_tree_enable){
 		for (int j =0;j<event_tree->GetEntries();j++){
