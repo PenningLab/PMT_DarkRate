@@ -62,7 +62,7 @@ double lookforward = 3.0;
 int current_sweep = 0;
 double number_of_peaks = 0.0;
 int adc_per_Volt = 8192;
-double resistance = 50.0;
+double resistance = 0.005;
 int baseline_samples_set = 160;
 
 

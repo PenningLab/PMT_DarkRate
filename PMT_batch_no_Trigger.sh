@@ -9,7 +9,7 @@ number_samples=$1
 dirname=$2
 num=$3
 init=0
-bs=-1
+bsam=-1
 pth=-1
 shift 3
 while getopts 'i:b:p:' opt; do
