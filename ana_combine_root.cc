@@ -205,7 +205,7 @@ int main(int argc, char *argv[]){
         for (int j=0;j<nument;j++){
             tree->GetEntry(j);
             pulse->Fill(pulseHeight,pulseRightEdge,pulseLeftEdge,pulseCharge,pulsePeakTime,CalibratedTime,baselinerms,windowRatio,i,sweep);
-			if(charge_threshold!=-1){
+			if(charge_threshold!=-1 && pulseCharge>charge_threshold){
 				dark_countcut.back()++;
 			}
             //cout<<" This is root file : "<<i<<" we are reading entry : "<<j<<" with pulseHeight : "<<pulseHeight<<endl;

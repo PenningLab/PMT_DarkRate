@@ -356,6 +356,7 @@ static void show_usage(string name){
 	<<" -trigger : invert trigger pulse \n"
 	<<" -pt : pulse threshold\n"
 	<<" -e : write event tree\n"
+	<<" -invert: invert waveform\n"
     <<" -debug : Get in the debugging mode.\n"
     <<" -h or --help : Show the usage\n"
     <<" Enjoy ! -Ryan Wang"<<endl;
@@ -369,6 +370,7 @@ int main(int argc, char *argv[]){
 
 	bool use_trigger = false;
     bool trigger_inversion = false;
+	bool invert_waveform = false;
 	bool write_event = false;
 
     if (argc<2){
@@ -409,6 +411,9 @@ int main(int argc, char *argv[]){
         else if (arg=="-trigger"){
             trigger_inversion = true;
         }
+		else if (arg=="-invert"){
+			invert_waveform = true;
+		}
         else if (arg=="-debug"){
             debug_mode = true;
         }
@@ -551,7 +556,8 @@ int main(int argc, char *argv[]){
             else{
                 double datum = buff->Atof();
                 if (pcount<number_of_samples+1){
-                    datum*=-1;
+					if(invert_waveform)
+                    	datum*=-1;
 
                     datum /= adc_per_Volt;
                     //cout<<" This is sample "<<pcount<<" with value : "<<datum<<endl;

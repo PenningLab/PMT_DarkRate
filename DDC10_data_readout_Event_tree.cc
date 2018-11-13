@@ -349,7 +349,7 @@ static void show_usage(string name){
     <<" -i : Name of input file.\n"
     <<" -n : Number of Samples in one event\n"
     <<" -wd : Working directory\n"
-    <<" -t filename for trigger pulse\n"
+    <<" -t : filename for trigger pulse\n"
     <<" -debug : Get in the debugging mode.\n"
     <<" -h or --help : Show the usage\n"
     <<" Enjoy ! -Ryan Wang"<<endl;
