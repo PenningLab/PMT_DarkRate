@@ -415,7 +415,7 @@ int main(int argc, char *argv[]){
 		return -1;
 	}
 
-	if(wform_channel>=Nchannels || trig_channel>=Nchannels){
+	if(wform_channel>=Nchannels || (trig_channel>=Nchannels && use_trigger)){
 		cout<<"Channel numbers given do not match file header, double check your inputs."<<endl;
 		return -1;
 	}
@@ -464,6 +464,8 @@ int main(int argc, char *argv[]){
 
 	int skip=0;
 	for(int sweep=0;sweep<Nevts;sweep++){
+
+		cout<<"Searching through sweep "<<sweep<<endl;
 		skip = (sweep*Nchannels + trig_channel)*(2*4 + 2*number_of_samples + 4);
 		if(use_trigger){
 			fin.seekg(skip,ios::beg);
