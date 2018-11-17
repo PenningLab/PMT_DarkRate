@@ -550,7 +550,7 @@ int main(int argc, char *argv[]){
     baseline_plot->SetMarkerStyle(22);
     baseline_plot->Draw("AP");
 
-    cout<<" Total sweeps is : "<<sweep<<endl;
+    //cout<<" Total sweeps is : "<<sweep<<endl;
 
 	wforms_tree->Write();
     pulse->Write();
