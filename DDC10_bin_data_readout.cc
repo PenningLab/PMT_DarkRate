@@ -387,9 +387,9 @@ int main(int argc, char *argv[]){
 	short int datum;
 	int dummy;
 	int mask;
-
-	cout<<"Reading file: "<<filename<<endl;
-	fin.open(filename,ios::binary|ios::in);
+	sprintf(open_filename,"%s/%s",working_dir.c_str(),filename.c_str());
+    cout<<" We are opening "<<open_filename<<endl;
+	fin.open(open_filename,ios::binary|ios::in);
 
 	if (fin.is_open()){
 		//memblock.resize(size);
@@ -433,10 +433,6 @@ int main(int argc, char *argv[]){
     int pcount=0; // Pulse counter
     double temp_sum=0;
     double rms_value;
-
-    sprintf(open_filename,"%s/%s",working_dir.c_str(),filename.c_str());
-
-    cout<<" We are opening "<<open_filename<<endl;
 
     sprintf(out_filename,"%s/%s",working_dir.c_str(),outfilename.c_str());
     cout<<" Out put filename is : "<<out_filename<<endl;
