@@ -297,11 +297,11 @@ int calcnumchannels(int mask){
 	return numchans;
 }
 
-void getwaveform(ifstream file, vector<double> &v, float mult=1){
+void getwaveform(vector<double> &v, float mult=1){
 	short int memblock;
 	double datum;
 	for(int i=0;i<number_of_samples;i++){
-		file.read((char*)&memblock,sizeof(memblock));
+		fin.read((char*)&memblock,sizeof(memblock));
 		datum = (double)memblock*mult/(double)adc_per_Volt;
 		v.push_back(datum);
 		if (i<baseline_samples_set)
@@ -473,7 +473,7 @@ int main(int argc, char *argv[]){
 			fin.seekg(skip,ios::beg);
 			fin.read((char*)&dummy,sizeof(dummy));
 			fin.read((char*)&dummy,sizeof(dummy));
-			getwaveform(fin,raw_waveform,(trigger_inversion ? -1.0 : 1.0));
+			getwaveform(raw_waveform,(trigger_inversion ? -1.0 : 1.0));
 			Trigger_info(raw_waveform,sweep);
 			trigger_t = trigger_time[sweep];
 		}
@@ -482,7 +482,7 @@ int main(int argc, char *argv[]){
 		fin.seekg(skip,ios::beg);
 		fin.read((char*)&dummy,sizeof(dummy));
 		fin.read((char*)&dummy,sizeof(dummy));
-		getwaveform(fin,raw_waveform,(invert_waveform ? -1.0 : 1.0));
+		getwaveform(raw_waveform,(invert_waveform ? -1.0 : 1.0));
 
 		std::copy(raw_waveform.begin(),raw_waveform.end(),waveforms);
 		wforms_tree->Fill();
