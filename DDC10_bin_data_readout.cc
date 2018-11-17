@@ -74,6 +74,7 @@ vector<double> start_pointv;
 vector<double> end_pointv;
 vector<double> baseline;
 vector<double> baselinev;
+vector<double> trigbaselinev;
 vector<double> pulse_left_edge;
 vector<double> pulse_right_edge;
 vector<double> amplitude_position;
@@ -270,7 +271,7 @@ double baseline_rms(vector<double> &v, vector<float> &sample, int nosamples,int 
 }
 //Trigger analysis
 void Trigger_info(vector<float> waveform,int sw){
-	double rms_value_trigger = baseline_rms(baselinev,raw_waveform,number_of_samples,0,true);// Calculate baseline and rms then pass to pulse finder
+	double rms_value_trigger = baseline_rms(trigbaselinev,waveform,number_of_samples,0,true);// Calculate baseline and rms then pass to pulse finder
 	baselinev.clear();
 	if (sw%1000==0){
 		cout<<" This is sweep : "<<sw<<endl;
@@ -297,7 +298,7 @@ int calcnumchannels(int mask){
 	return numchans;
 }
 
-void getwaveform(vector<float> &v, float mult=1){
+void getwaveform(vector<float> &v, float mult=1,bool trig=false){
 	short int memblock;
 	double datum;
 	for(int i=0;i<number_of_samples;i++){
@@ -305,7 +306,8 @@ void getwaveform(vector<float> &v, float mult=1){
 		datum = (double)memblock*mult/(double)adc_per_Volt;
 		v.push_back(datum);
 		if (i<baseline_samples_set)
-			baselinev.push_back(datum);
+			if(!trig) baselinev.push_back(datum);
+			else trigbaselinev.push_back(datum);
 	}
 }
 
@@ -386,14 +388,15 @@ int main(int argc, char *argv[]){
 
 	short int datum;
 	int dummy;
-	int mask;
+	int mask,size;
 	char open_filename[200];// full input filename
 	sprintf(open_filename,"%s/%s",working_dir.c_str(),filename.c_str());
     cout<<" We are opening "<<open_filename<<endl;
-	fin.open(open_filename,ios::binary|ios::in);
+	fin.open(open_filename,ios::binary|ios::in|ios::ate);
 
 	if (fin.is_open()){
 		//memblock.resize(size);
+		size = file.tellg()
 		fin.seekg(0,ios::beg);
 		//cout<<"size: "<<size<<endl;
 		//numevts = new char [5];
@@ -412,6 +415,11 @@ int main(int argc, char *argv[]){
 	}
 	else{
 		cout<<"Failed to open file"<<endl;
+		return -1;
+	}
+	int predsize = Nevts*Nchannels*(2*4 + 2*number_of_samples + 4) + 4*4;
+	if(size<predsize){
+		cout<<"Warning::Size predicted from header is greater than actual size"<<endl;
 		return -1;
 	}
 
@@ -461,26 +469,36 @@ int main(int argc, char *argv[]){
     // Store the waveform plot for debugging
     TCanvas *waveplot[100];
     vector<double> baseline_sweep;
+	vector<float> trigwaveform;
 
 	int skip=0;
 	for(int sweep=0;sweep<Nevts;sweep++){
 
 		cout<<"Searching through sweep "<<sweep<<endl;
-		skip = (sweep*Nchannels + trig_channel)*(2*4 + 2*number_of_samples + 4);
-		if(use_trigger){
-			fin.seekg(skip,ios::beg);
-			fin.read((char*)&dummy,sizeof(dummy));
-			fin.read((char*)&dummy,sizeof(dummy));
-			getwaveform(raw_waveform,(trigger_inversion ? -1.0 : 1.0));
-			Trigger_info(raw_waveform,sweep);
-			trigger_t = trigger_time[sweep];
-		}
+		skip = (2*4 + 2*number_of_samples + 4);
+		for(int chan=0;chan<Nchannels;chan++){
+			if(use_trigger && chan==trig_channel){
+				//fin.seekg(skip,ios::beg);
+				fin.read((char*)&dummy,sizeof(dummy));
+				fin.read((char*)&dummy,sizeof(dummy));
+				getwaveform(trigwaveform,(trigger_inversion ? -1.0 : 1.0),true);
+				fin.read((char*)&dummy,sizeof(dummy));
+				Trigger_info(trigwaveform,sweep);
+				trigger_t = trigger_time[sweep];
+			}
+			else if(chan==wform_channel){
+				//fin.seekg(skip,ios::beg);
+				fin.read((char*)&dummy,sizeof(dummy));
+				fin.read((char*)&dummy,sizeof(dummy));
+				getwaveform(raw_waveform,(invert_waveform ? -1.0 : 1.0));
+				fin.read((char*)&dummy,sizeof(dummy));
+			}
+			else{
 
-		skip = (sweep*Nchannels + wform_channel)*(2*4 + 2*number_of_samples + 4);
-		fin.seekg(skip,ios::beg);
-		fin.read((char*)&dummy,sizeof(dummy));
-		fin.read((char*)&dummy,sizeof(dummy));
-		getwaveform(raw_waveform,(invert_waveform ? -1.0 : 1.0));
+				char *superdummy = new char[skip];
+				fin.read(superdummy,skip);
+			}
+		}
 
 		std::copy(raw_waveform.begin(),raw_waveform.end(),waveforms);
 		wforms_tree->Fill();
@@ -494,9 +512,9 @@ int main(int argc, char *argv[]){
 			t11 = new TGraph();
 			t22 = new TGraph();
 			t33 = new TGraph();
-			for (int j=0;j<pulse_left_edge.size();j++){
-            	t22->SetPoint(j,pulse_left_edge[j],startv[j]);
-                t33->SetPoint(j,pulse_right_edge[j],endv[j]);
+			for (int j=0;j<pl.size();j++){
+            	t22->SetPoint(j,pl[j],startv[j]);
+                t33->SetPoint(j,pr[j],endv[j]);
             }
 			for (int sam=0;sam<number_of_samples;sam++){
 				t11->SetPoint(sam,sam,raw_waveform[sam]);
