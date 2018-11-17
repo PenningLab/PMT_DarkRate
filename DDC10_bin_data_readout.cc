@@ -269,7 +269,7 @@ double baseline_rms(vector<double> &v, vector<float> &sample, int nosamples,int 
     return baseline_samples;
 }
 //Trigger analysis
-void Trigger_info(vector<double> waveform,int sw){
+void Trigger_info(vector<float> waveform,int sw){
 	double rms_value_trigger = baseline_rms(baselinev,raw_waveform,number_of_samples,0,true);// Calculate baseline and rms then pass to pulse finder
 	baselinev.clear();
 	if (sw%1000==0){
@@ -297,7 +297,7 @@ int calcnumchannels(int mask){
 	return numchans;
 }
 
-void getwaveform(vector<double> &v, float mult=1){
+void getwaveform(vector<float> &v, float mult=1){
 	short int memblock;
 	double datum;
 	for(int i=0;i<number_of_samples;i++){
