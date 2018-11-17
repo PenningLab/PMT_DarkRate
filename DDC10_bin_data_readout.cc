@@ -396,7 +396,7 @@ int main(int argc, char *argv[]){
 
 	if (fin.is_open()){
 		//memblock.resize(size);
-		size = file.tellg();
+		size = fin.tellg();
 		fin.seekg(0,ios::beg);
 		//cout<<"size: "<<size<<endl;
 		//numevts = new char [5];
