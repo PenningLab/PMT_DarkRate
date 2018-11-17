@@ -387,6 +387,7 @@ int main(int argc, char *argv[]){
 	short int datum;
 	int dummy;
 	int mask;
+	char open_filename[200];// full input filename
 	sprintf(open_filename,"%s/%s",working_dir.c_str(),filename.c_str());
     cout<<" We are opening "<<open_filename<<endl;
 	fin.open(open_filename,ios::binary|ios::in);
@@ -427,7 +428,6 @@ int main(int argc, char *argv[]){
 
     //char linea[200];// temp char for line in the file
     //TString* buff=new TString();
-    char open_filename[200];// full input filename
     char out_filename[200]; // full output filename
     int iana = 0; // TGraph counter
     int pcount=0; // Pulse counter
