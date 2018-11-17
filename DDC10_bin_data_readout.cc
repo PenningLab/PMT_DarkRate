@@ -270,7 +270,7 @@ double baseline_rms(vector<double> &v, vector<float> &sample, int nosamples,int 
 }
 //Trigger analysis
 void Trigger_info(vector<double> waveform,int sw){
-	rms_value_trigger = baseline_rms(baselinev,raw_waveform,number_of_samples,0,true);// Calculate baseline and rms then pass to pulse finder
+	double rms_value_trigger = baseline_rms(baselinev,raw_waveform,number_of_samples,0,true);// Calculate baseline and rms then pass to pulse finder
 	baselinev.clear();
 	if (sw%1000==0){
 		cout<<" This is sweep : "<<sw<<endl;
@@ -302,7 +302,7 @@ void getwaveform(ifstream file, vector<double> &v, float mult=1){
 	double datum;
 	for(int i=0;i<number_of_samples;i++){
 		file.read((char*)&memblock,sizeof(memblock));
-		datum = (double)memblock*mult/(double)adc_per_Volt
+		datum = (double)memblock*mult/(double)adc_per_Volt;
 		v.push_back(datum);
 		if (i<baseline_samples_set)
 			baselinev.push_back(datum);
@@ -394,7 +394,7 @@ int main(int argc, char *argv[]){
 	if (fin.is_open()){
 		//memblock.resize(size);
 		fin.seekg(0,ios::beg);
-		cout<<"size: "<<size<<endl;
+		//cout<<"size: "<<size<<endl;
 		//numevts = new char [5];
 		fin.read((char*)&Nevts,sizeof(Nevts));
 		cout<<Nevts<<" Events"<<endl;
@@ -466,7 +466,7 @@ int main(int argc, char *argv[]){
     TCanvas *waveplot[100];
     vector<double> baseline_sweep;
 
-	int skip=0
+	int skip=0;
 	for(int sweep=0;sweep<Nevts;sweep++){
 		skip = (sweep*Nchannels + trig_channel)*(2*4 + 2*number_of_samples + 4);
 		if(use_trigger){
