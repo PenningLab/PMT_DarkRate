@@ -474,7 +474,7 @@ int main(int argc, char *argv[]){
 	int skip=0;
 	for(int sweep=0;sweep<Nevts;sweep++){
 
-		cout<<"Searching through sweep "<<sweep<<endl;
+		//cout<<"Searching through sweep "<<sweep<<endl;
 		skip = (2*4 + 2*number_of_samples + 4);
 		for(int chan=0;chan<Nchannels;chan++){
 			if(use_trigger && chan==trig_channel){
@@ -494,7 +494,6 @@ int main(int argc, char *argv[]){
 				fin.read((char*)&dummy,sizeof(dummy));
 			}
 			else{
-
 				char *superdummy = new char[skip];
 				fin.read(superdummy,skip);
 			}
