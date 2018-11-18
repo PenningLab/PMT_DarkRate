@@ -538,6 +538,9 @@ int main(int argc, char *argv[]){
             waveplot[sweep]->Write();
             cout<<" plotting the waveform, this is sweep : "<<sweep<<endl;
 		}
+		if (sweep%1000==0){
+			cout<<" This is sweep : "<<sweep<<endl;
+		}
         pulse_left_edge.clear();
         pulse_right_edge.clear();
         startv.clear();
