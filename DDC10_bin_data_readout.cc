@@ -94,6 +94,7 @@ vector<double> event_rms;
 int number_of_samples;
 int Nchannels;
 int Nevts;
+short int *buff;
 
 // Simpson Integral
 double SimpsIntegral(const vector<float>& samples, double baseline,int start, int end){
@@ -274,19 +275,6 @@ double baseline_rms(vector<double> &v, vector<float> &sample, int nosamples,int 
     extract_event(sample,baseline_samples,rms,nosamples,ttime,trig);
     return baseline_samples;
 }
-void getwaveform(vector<float> &v, float mult=1,bool trig=false){
-	short int *memblock;
-	memblock = new short int[number_of_samples];
-	fin.read((char*)&memblock[0],number_of_samples*sizeof(memblock[0]));
-	double datum;
-	for(int i=0;i<number_of_samples;i++){
-		datum = (double)memblock[i]*mult/(double)adc_per_Volt;
-		v.push_back(datum);
-		if (i<baseline_samples_set)
-			if(!trig) baselinev.push_back(datum);
-			else trigbaselinev.push_back(datum);
-	}
-}
 //Trigger analysis
 double Trigger_info(vector<float> waveform){
 	double rms_value_trigger = baseline_rms(trigbaselinev,waveform,number_of_samples,0,true);// Calculate baseline and rms then pass to pulse finder
@@ -306,6 +294,30 @@ double Trigger_info(vector<float> waveform){
     return time;
 }
 
+void getwaveform(vector<float> &v, float mult=1,bool trig=false){
+	short int *memblock;
+	memblock = new short int[number_of_samples];
+	fin.read((char*)&memblock[0],number_of_samples*sizeof(memblock[0]));
+	double datum;
+	for(int i=0;i<number_of_samples;i++){
+		datum = (double)memblock[i]*mult/(double)adc_per_Volt;
+		v.push_back(datum);
+		if (i<baseline_samples_set)
+			if(!trig) baselinev.push_back(datum);
+			else trigbaselinev.push_back(datum);
+	}
+}
+void getwaveform2(vector<float> &v,int channel,int numread,float mult=1,bool trig=false){
+	int starti = ((numread-current_sweep)*Nchannels + channel)*(4 + 2 + number_of_samples);
+	double datum;
+	for(int i=0;i<number_of_samples;i++){
+		datum = (double)buff[i+starti]*mult/(double)adc_per_Volt;
+		v.push_back(datum);
+		if (i<baseline_samples_set)
+			if(!trig) baselinev.push_back(datum);
+			else trigbaselinev.push_back(datum);
+	}
+}
 int calcnumchannels(int mask){
 	int numchans=0;
 	while (mask>0){
@@ -427,10 +439,14 @@ int main(int argc, char *argv[]){
 		return -1;
 	}
 
-	if(wform_channel>=Nchannels || (trig_channel>=Nchannels && use_trigger)){
+	if(wform_channel>=Nchannels || wform_channel<0 || ((trig_channel>=Nchannels || trig_channel<0) && use_trigger)){
 		cout<<"Channel numbers given do not match file header, double check your inputs."<<endl;
 		return -1;
 	}
+	int evtsize = Nchannels*(2*4 + 2*number_of_samples + 4);
+	int buffsize;
+	if((predsize-16)>10485760) buffsize = 10485760/evtsize;
+	else buffsize = Nevts;
 
 	// Plots for debugging pulse finding algorithm
     TGraph* t11;
@@ -476,37 +492,48 @@ int main(int argc, char *argv[]){
 	vector<float> trigwaveform;
 
 	int skip=0;
+	int readin=0;
+
 	for(int sweep=0;sweep<Nevts;sweep++){
+		if((readin-1)<=sweep){
+			int arrsize = buffsize*evtsize/2;
+			if((Nevts-readin)<buffsize){
+				arrsize = (Nevts-readin)*evtsize/2;
+			}
+			buff = new short int[arrsize];
+			fin.read((char*)&buff[0],arrsize*sizeof(buff[0]));
+			readin += arrsize*2/evtsize;
+		}
 		if (sweep%1000==0){
 			cout<<" This is sweep : "<<sweep<<endl;
 		}
+		current_sweep = sweep;
 		//cout<<"Searching through sweep "<<sweep<<endl;
 		skip = (2*4 + 2*number_of_samples + 4);
-		for(int chan=0;chan<Nchannels;chan++){
-			if(use_trigger && chan==trig_channel){
+		//for(int chan=0;chan<Nchannels;chan++){
+			if(use_trigger /*&& chan==trig_channel*/){
 				signal_start = false;
 				//fin.seekg(skip,ios::beg);
-				fin.read((char*)&dummy,sizeof(dummy));
-				fin.read((char*)&dummy,sizeof(dummy));
-				getwaveform(trigwaveform,(trigger_inversion ? -1.0 : 1.0),true);
-				fin.read((char*)&dummy,sizeof(dummy));
+				//fin.read((char*)&dummy,sizeof(dummy));
+				//fin.read((char*)&dummy,sizeof(dummy));
+				getwaveform2(trigwaveform,trig_channel,readin,(trigger_inversion ? -1.0 : 1.0),true);
+				//fin.read((char*)&dummy,sizeof(dummy));
 				trigger_t = Trigger_info(trigwaveform);
 				//trigger_t = trigger_time[sweep];
 			}
-			else if(chan==wform_channel){
+			//else if(chan==wform_channel){
 				signal_start = true;
 				//fin.seekg(skip,ios::beg);
-				fin.read((char*)&dummy,sizeof(dummy));
-				fin.read((char*)&dummy,sizeof(dummy));
-				getwaveform(raw_waveform,(invert_waveform ? -1.0 : 1.0));
-				fin.read((char*)&dummy,sizeof(dummy));
-			}
-			else{
-				char *superdummy = new char[skip];
-				fin.read(superdummy,skip);
-			}
-		}
-		current_sweep = sweep;
+				//fin.read((char*)&dummy,sizeof(dummy));
+				//fin.read((char*)&dummy,sizeof(dummy));
+				getwaveform2(raw_waveform,wform_channel,readin,(invert_waveform ? -1.0 : 1.0));
+				//fin.read((char*)&dummy,sizeof(dummy));
+			//}
+			//else{
+			//	char *superdummy = new char[skip];
+				//fin.read(superdummy,skip);
+			//}
+		//}
 		std::copy(raw_waveform.begin(),raw_waveform.end(),waveforms);
 		wforms_tree->Fill();
 		number_of_peaks = 0.0;
