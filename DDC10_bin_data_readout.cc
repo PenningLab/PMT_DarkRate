@@ -80,7 +80,7 @@ vector<double> pulse_right_edge;
 vector<double> amplitude_position;
 vector<double> pl;
 vector<double> pr;
-vector<double> trigger_time;
+//vector<double> trigger_time;
 vector<double> CalibratedTime;
 vector<double> windowratio;
 vector<double> pulsebaseline_rms;
@@ -226,6 +226,7 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
 
             //if (temp_peak>0 &&temp_peak<8000){
             //if (thischarge<1.0)
+			if(trig) break;
 		    number_of_peaks ++;
             //}
             //cout<<" This is sample : "<<i<<" Charge integral is : "<<SimpsIntegral(v,b,left,right)<<endl;
@@ -239,8 +240,10 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
 
     }
     //getchar();
-	event_charge_ten.push_back(temp_ten_charge);
-    event_charge.push_back(temp_charge);
+	if (!trig){
+		event_charge_ten.push_back(temp_ten_charge);
+    	event_charge.push_back(temp_charge);
+	}
 }
 // Find the baseline
 double baseline_rms(vector<double> &v, vector<float> &sample, int nosamples,int ttime,bool trig = false){
@@ -264,29 +267,43 @@ double baseline_rms(vector<double> &v, vector<float> &sample, int nosamples,int 
         cout<<" rms is : "<<rms<<" baseline is : "<<baseline_samples<<endl;
         getchar();
     }
-	event_baseline.push_back(baseline_samples);
-    event_rms.push_back(rms);
+    if(!trig){
+    	event_baseline.push_back(baseline_samples);
+    	event_rms.push_back(rms);
+    }
     extract_event(sample,baseline_samples,rms,nosamples,ttime,trig);
     return baseline_samples;
 }
-//Trigger analysis
-void Trigger_info(vector<float> waveform,int sw){
-	double rms_value_trigger = baseline_rms(trigbaselinev,waveform,number_of_samples,0,true);// Calculate baseline and rms then pass to pulse finder
-	baselinev.clear();
-	if (sw%1000==0){
-		cout<<" This is sweep : "<<sw<<endl;
+void getwaveform(vector<float> &v, float mult=1,bool trig=false){
+	short int *memblock;
+	memblock = new short int[number_of_samples];
+	fin.read((char*)&memblock[0],number_of_samples*sizeof(memblock[0]));
+	double datum;
+	for(int i=0;i<number_of_samples;i++){
+		datum = (double)memblock[i]*mult/(double)adc_per_Volt;
+		v.push_back(datum);
+		if (i<baseline_samples_set)
+			if(!trig) baselinev.push_back(datum);
+			else trigbaselinev.push_back(datum);
 	}
+}
+//Trigger analysis
+double Trigger_info(vector<float> waveform){
+	double rms_value_trigger = baseline_rms(trigbaselinev,waveform,number_of_samples,0,true);// Calculate baseline and rms then pass to pulse finder
+	double time;
+	baselinev.clear();
 	if (pulse_left_edge.size() == 0){
-        trigger_time.push_back(0);
+        time = 0;
         cout<<" Can not find the trigger pulse for this event ! "<<endl;
     }
     else{
-        trigger_time.push_back(pulse_left_edge[0]);
+        time = (pulse_left_edge[0]);
     }
-	pulse_left_edge.clear();
+    pulse_left_edge.clear();
     pulse_right_edge.clear();
-
-    raw_waveform.clear();
+    trigbaselinev.clear();
+    waveform.clear();
+    return time;
 }
 
 int calcnumchannels(int mask){
@@ -296,19 +313,6 @@ int calcnumchannels(int mask){
 		mask /= 2;
 	}
 	return numchans;
-}
-
-void getwaveform(vector<float> &v, float mult=1,bool trig=false){
-	short int memblock;
-	double datum;
-	for(int i=0;i<number_of_samples;i++){
-		fin.read((char*)&memblock,sizeof(memblock));
-		datum = (double)memblock*mult/(double)adc_per_Volt;
-		v.push_back(datum);
-		if (i<baseline_samples_set)
-			if(!trig) baselinev.push_back(datum);
-			else trigbaselinev.push_back(datum);
-	}
 }
 
 
@@ -473,20 +477,24 @@ int main(int argc, char *argv[]){
 
 	int skip=0;
 	for(int sweep=0;sweep<Nevts;sweep++){
-
+		if (sweep%1000==0){
+			cout<<" This is sweep : "<<sweep<<endl;
+		}
 		//cout<<"Searching through sweep "<<sweep<<endl;
 		skip = (2*4 + 2*number_of_samples + 4);
 		for(int chan=0;chan<Nchannels;chan++){
 			if(use_trigger && chan==trig_channel){
+				signal_start = false;
 				//fin.seekg(skip,ios::beg);
 				fin.read((char*)&dummy,sizeof(dummy));
 				fin.read((char*)&dummy,sizeof(dummy));
 				getwaveform(trigwaveform,(trigger_inversion ? -1.0 : 1.0),true);
 				fin.read((char*)&dummy,sizeof(dummy));
-				Trigger_info(trigwaveform,sweep);
-				trigger_t = trigger_time[sweep];
+				trigger_t = Trigger_info(trigwaveform);
+				//trigger_t = trigger_time[sweep];
 			}
 			else if(chan==wform_channel){
+				signal_start = true;
 				//fin.seekg(skip,ios::beg);
 				fin.read((char*)&dummy,sizeof(dummy));
 				fin.read((char*)&dummy,sizeof(dummy));
@@ -498,7 +506,7 @@ int main(int argc, char *argv[]){
 				fin.read(superdummy,skip);
 			}
 		}
-
+		current_sweep = sweep;
 		std::copy(raw_waveform.begin(),raw_waveform.end(),waveforms);
 		wforms_tree->Fill();
 		number_of_peaks = 0.0;
@@ -511,9 +519,9 @@ int main(int argc, char *argv[]){
 			t11 = new TGraph();
 			t22 = new TGraph();
 			t33 = new TGraph();
-			for (int j=0;j<pl.size();j++){
-            	t22->SetPoint(j,pl[j],startv[j]);
-                t33->SetPoint(j,pr[j],endv[j]);
+			for (int j=0;j<pulse_left_edge.size();j++){
+            	t22->SetPoint(j,pulse_left_edge[j],startv[j]);
+                t33->SetPoint(j,pulse_right_edge[j],endv[j]);
             }
 			for (int sam=0;sam<number_of_samples;sam++){
 				t11->SetPoint(sam,sam,raw_waveform[sam]);
@@ -537,9 +545,6 @@ int main(int argc, char *argv[]){
             line->Draw("");
             waveplot[sweep]->Write();
             cout<<" plotting the waveform, this is sweep : "<<sweep<<endl;
-		}
-		if (sweep%1000==0){
-			cout<<" This is sweep : "<<sweep<<endl;
 		}
         pulse_left_edge.clear();
         pulse_right_edge.clear();
