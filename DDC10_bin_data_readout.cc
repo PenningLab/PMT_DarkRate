@@ -290,7 +290,7 @@ double Trigger_info(vector<float> waveform){
     pulse_left_edge.clear();
     pulse_right_edge.clear();
     trigbaselinev.clear();
-    waveform.clear();
+    //waveform.clear();
     return time;
 }
 
@@ -308,7 +308,11 @@ void getwaveform(vector<float> &v, float mult=1,bool trig=false){
 	}
 }
 void getwaveform2(vector<float> &v,int channel,int numread,float mult=1,bool trig=false){
-	int starti = ((numread-current_sweep)*Nchannels + channel)*(4 + 2 + number_of_samples);
+	int starti = ((current_sweep-numread)*Nchannels + channel)*(4 + 2 + number_of_samples) + 4;
+	/*if(current_sweep%100000==0){
+		cout<<"starting at "<<starti<<" in buffer"<<endl;
+		cout<<"Evt "<<(current_sweep-numread)<<" of this buffer"<<endl;
+	}*/
 	double datum;
 	for(int i=0;i<number_of_samples;i++){
 		datum = (double)buff[i+starti]*mult/(double)adc_per_Volt;
@@ -445,8 +449,9 @@ int main(int argc, char *argv[]){
 	}
 	int evtsize = Nchannels*(2*4 + 2*number_of_samples + 4);
 	int buffsize;
-	if((predsize-16)>10485760) buffsize = 10485760/evtsize;
+	if((Nevts*evtsize)>20971520) buffsize = 20971520/evtsize;
 	else buffsize = Nevts;
+	cout<<"Using buffer of "<<buffsize<<" events"<<endl;
 
 	// Plots for debugging pulse finding algorithm
     TGraph* t11;
@@ -461,6 +466,7 @@ int main(int argc, char *argv[]){
     int pcount=0; // Pulse counter
     double temp_sum=0;
     double rms_value;
+	
 
     sprintf(out_filename,"%s/%s",working_dir.c_str(),outfilename.c_str());
     cout<<" Out put filename is : "<<out_filename<<endl;
@@ -493,16 +499,19 @@ int main(int argc, char *argv[]){
 
 	int skip=0;
 	int readin=0;
-
+	int lastadd=0;
 	for(int sweep=0;sweep<Nevts;sweep++){
-		if((readin-1)<=sweep){
+		if((readin)<(sweep+1)){
 			int arrsize = buffsize*evtsize/2;
 			if((Nevts-readin)<buffsize){
 				arrsize = (Nevts-readin)*evtsize/2;
 			}
 			buff = new short int[arrsize];
 			fin.read((char*)&buff[0],arrsize*sizeof(buff[0]));
+			lastadd = readin;
 			readin += arrsize*2/evtsize;
+			
+			cout<<"Read in "<<readin<<" events so far"<<endl;
 		}
 		if (sweep%1000==0){
 			cout<<" This is sweep : "<<sweep<<endl;
@@ -516,9 +525,10 @@ int main(int argc, char *argv[]){
 				//fin.seekg(skip,ios::beg);
 				//fin.read((char*)&dummy,sizeof(dummy));
 				//fin.read((char*)&dummy,sizeof(dummy));
-				getwaveform2(trigwaveform,trig_channel,readin,(trigger_inversion ? -1.0 : 1.0),true);
+				getwaveform2(trigwaveform,trig_channel,lastadd,(trigger_inversion ? -1.0 : 1.0),true);
 				//fin.read((char*)&dummy,sizeof(dummy));
 				trigger_t = Trigger_info(trigwaveform);
+				trigwaveform.clear();
 				//trigger_t = trigger_time[sweep];
 			}
 			//else if(chan==wform_channel){
@@ -526,7 +536,7 @@ int main(int argc, char *argv[]){
 				//fin.seekg(skip,ios::beg);
 				//fin.read((char*)&dummy,sizeof(dummy));
 				//fin.read((char*)&dummy,sizeof(dummy));
-				getwaveform2(raw_waveform,wform_channel,readin,(invert_waveform ? -1.0 : 1.0));
+				getwaveform2(raw_waveform,wform_channel,lastadd,(invert_waveform ? -1.0 : 1.0));
 				//fin.read((char*)&dummy,sizeof(dummy));
 			//}
 			//else{
