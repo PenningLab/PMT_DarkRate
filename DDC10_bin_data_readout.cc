@@ -294,20 +294,7 @@ double Trigger_info(vector<float> waveform){
     return time;
 }
 
-void getwaveform(vector<float> &v, float mult=1,bool trig=false){
-	short int *memblock;
-	memblock = new short int[number_of_samples];
-	fin.read((char*)&memblock[0],number_of_samples*sizeof(memblock[0]));
-	double datum;
-	for(int i=0;i<number_of_samples;i++){
-		datum = (double)memblock[i]*mult/(double)adc_per_Volt;
-		v.push_back(datum);
-		if (i<baseline_samples_set)
-			if(!trig) baselinev.push_back(datum);
-			else trigbaselinev.push_back(datum);
-	}
-}
-void getwaveform2(vector<float> &v,int channel,int numread,float mult=1,bool trig=false){
+void getwaveform(vector<float> &v,int channel,int numread,float mult=1,bool trig=false){
 	int starti = ((current_sweep-numread)*Nchannels + channel)*(4 + 2 + number_of_samples) + 4;
 	/*if(current_sweep%100000==0){
 		cout<<"starting at "<<starti<<" in buffer"<<endl;
@@ -525,7 +512,7 @@ int main(int argc, char *argv[]){
 				//fin.seekg(skip,ios::beg);
 				//fin.read((char*)&dummy,sizeof(dummy));
 				//fin.read((char*)&dummy,sizeof(dummy));
-				getwaveform2(trigwaveform,trig_channel,lastadd,(trigger_inversion ? -1.0 : 1.0),true);
+				getwaveform(trigwaveform,trig_channel,lastadd,(trigger_inversion ? -1.0 : 1.0),true);
 				//fin.read((char*)&dummy,sizeof(dummy));
 				trigger_t = Trigger_info(trigwaveform);
 				trigwaveform.clear();
@@ -536,7 +523,7 @@ int main(int argc, char *argv[]){
 				//fin.seekg(skip,ios::beg);
 				//fin.read((char*)&dummy,sizeof(dummy));
 				//fin.read((char*)&dummy,sizeof(dummy));
-				getwaveform2(raw_waveform,wform_channel,lastadd,(invert_waveform ? -1.0 : 1.0));
+				getwaveform(raw_waveform,wform_channel,lastadd,(invert_waveform ? -1.0 : 1.0));
 				//fin.read((char*)&dummy,sizeof(dummy));
 			//}
 			//else{
