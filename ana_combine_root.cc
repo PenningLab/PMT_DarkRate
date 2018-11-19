@@ -56,6 +56,10 @@ static void show_usage(string name){
     <<" -i : Name of input file.\n"
     <<" -n : Number of root files\n"
     <<" -wd : Working directory\n"
+    <<" -od : Output directory\n"
+    <<" -ct : Charge threshold for dark rate\n"
+    <<" -t : Use temperature measurements\n"
+    <<" -s : Number of sweeps\n"
     <<" -debug : Get in the debugging mode.\n"
     <<" -h or --help : Show the usage\n"
     <<" Enjoy ! -Ryan Wang"<<endl;
@@ -64,12 +68,17 @@ int main(int argc, char *argv[]){
     string filename;
     string outfilename;
     string working_dir;
+    string out_dir = "";
     int number_of_files = 0;
     bool event_tree_enable = false;
+		bool use_temp = false;
+    float charge_threshold = -1;
+    double num_sweeps=-1;
     if (argc<2){
         show_usage(argv[0]);
         return 1;
     }
+    cout<<"loading in arguments"<<endl;
     for (int i=1;i<argc;++i){
         string arg = argv[i];
         if ((arg=="-h") || (arg=="--help")){
@@ -78,6 +87,9 @@ int main(int argc, char *argv[]){
         }
         else if (arg=="-wd"){
             working_dir = argv[i+1] ;
+        }
+        else if (arg=="-od"){
+            out_dir = argv[i+1] ;
         }
         else if (arg=="-n"){
             number_of_files = atoi(argv[i+1]);
@@ -88,28 +100,60 @@ int main(int argc, char *argv[]){
         else if (arg=="-o"){
             outfilename = argv[i+1];
         }
+        else if (arg=="-ct"){
+            charge_threshold = atof(argv[i+1]);
+        }
+        else if (arg=="-s"){
+            num_sweeps = atof(argv[i+1]);
+        }
+		else if (arg=="-t"){
+            use_temp = true;
+        }
 	else if (arg=="-e"){
 		event_tree_enable = true;
 	}
     }
+    if(charge_threshold!=-1 && num_sweeps==-1){
+       cout<<"If using charge cut, number of sweeps (-s [nos]) is required"<<endl;
+       return 1;
+    }
+    if (out_dir=="") out_dir = working_dir;
+    ifstream temp_file;
+		if (use_temp){
+			char in_temp[320];
+			sprintf(in_temp,"%s/%s",working_dir.c_str(),"temptimes.txt");
+			temp_file.open(in_temp,std::ifstream::in);
+		}
     char out_path [320];
-    sprintf(out_path,"%s/%s",working_dir.c_str(),outfilename.c_str());
+    sprintf(out_path,"%s/%s",out_dir.c_str(),outfilename.c_str());
+    cout<<"Creating output file"<<endl;
     TFile *fout = new TFile(out_path,"RECREATE");
-    TNtuple *pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime");
+    TNtuple *pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:Run:sweep");
     //if (event_tree_enable){
     	TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms");
     //}
     // variables
-    float pulseHeight=0,pulseRightEdge=0,pulseLeftEdge=0,pulseCharge=0,pulsePeakTime=0,CalibratedTime=0;
+	float pulseHeight=0,pulseRightEdge=0,pulseLeftEdge=0,pulseCharge=0,pulsePeakTime=0,CalibratedTime=0,windowRatio=0,baselinerms=0,sweep=0;
     float charge=0,charge_frac=0,baseline=0,rms=0;
+    //    short int sweep=0;
+    //int run=0;
     vector<double> dark_count;
     vector<double> dark_count_error;
-    TTree* tree;
+    vector<double> dark_countcut;
+    vector<double> dark_countcut_error;
+		vector<double> rtd1;
+		vector<double> rtd2;
+		vector<double> rtd3;
+		vector<double> rtd4;
+
+	std::vector<float> raw_waveforms;
+    TTree* tree,*wforms;
     TTree* event_tree;
     cout<<"start looping"<<endl;
     for (int i=0;i<number_of_files;i++){
         char root_file_name [320];
         sprintf(root_file_name,"%s/%u_%s",working_dir.c_str(),i,filename.c_str());
+        cout<<"Reading in file"<<endl;
         TFile *fin = new TFile(root_file_name,"READ");
         if (fin == NULL){
             cout<<" File is corrupted ! "<<endl;
@@ -126,12 +170,28 @@ int main(int argc, char *argv[]){
         dark_count.push_back(dark_hit->GetMean());
         dark_count_error.push_back(dark_hit->GetMeanError());
 
+		if(charge_threshold!=-1){
+			dark_countcut.push_back(0);
+			dark_countcut_error.push_back(0);
+		}
+			if(use_temp){
+				double n,irtd1,irtd2,irtd3,irtd4;
+				temp_file >> n >> irtd1 >> irtd2 >> irtd3 >> irtd4;
+				rtd1.push_back(irtd1);
+				rtd2.push_back(irtd2);
+				rtd3.push_back(irtd3);
+				rtd4.push_back(irtd4);
+			}
+	cout<<"Loading tree branches"<<endl;
         tree->SetBranchAddress("pulseHeight",&pulseHeight);
         tree->SetBranchAddress("pulseRightEdge",&pulseRightEdge);
         tree->SetBranchAddress("pulseLeftEdge",&pulseLeftEdge);
         tree->SetBranchAddress("pulseCharge",&pulseCharge);
         tree->SetBranchAddress("pulsePeakTime",&pulsePeakTime);
         tree->SetBranchAddress("CalibratedTime",&CalibratedTime);
+        tree->SetBranchAddress("windowratio",&windowRatio);
+	tree->SetBranchAddress("baselinerms",&baselinerms);
+	tree->SetBranchAddress("sweep",&sweep);
         cout<<" processing root file No. "<<i<<endl;
 
 	if (event_tree_enable){
@@ -140,11 +200,20 @@ int main(int argc, char *argv[]){
 		event_tree->SetBranchAddress("baseline",&baseline);
 		event_tree->SetBranchAddress("rms",&rms);
         }
-        for (int j=0;j<tree->GetEntries();j++){
+        int nument = tree->GetEntries();
+
+        for (int j=0;j<nument;j++){
             tree->GetEntry(j);
-            pulse->Fill(pulseHeight,pulseRightEdge,pulseLeftEdge,pulseCharge,pulsePeakTime,CalibratedTime);
+            pulse->Fill(pulseHeight,pulseRightEdge,pulseLeftEdge,pulseCharge,pulsePeakTime,CalibratedTime,baselinerms,windowRatio,i,sweep);
+			if(charge_threshold!=-1 && pulseCharge>charge_threshold){
+				dark_countcut.back()++;
+			}
             //cout<<" This is root file : "<<i<<" we are reading entry : "<<j<<" with pulseHeight : "<<pulseHeight<<endl;
         }
+		if(charge_threshold!=-1){
+			dark_countcut_error[i]=num_sweeps/sqrt(dark_countcut[i]);
+			dark_countcut[i]*=1.0/num_sweeps;
+		}
 	if (event_tree_enable){
 		for (int j =0;j<event_tree->GetEntries();j++){
 			event_tree->GetEntry(j);
@@ -156,17 +225,71 @@ int main(int argc, char *argv[]){
     fout->cd();
 
     TGraphErrors* dark_plot = new TGraphErrors();
+
     for (int h=0;h<dark_count.size();h++){
         double temp_dark_rate = dark_count[h]*1E6/80;
         double temp_dark_rate_error = dark_count_error[h]*1E6/80;
         dark_plot->SetPoint(h,h,temp_dark_rate);
         dark_plot->SetPointError(h,0,temp_dark_rate_error);
     }
-    dark_plot->SetName("dark_plot");
+
+		if(use_temp){
+
+			TGraphErrors* prtd1 = new TGraphErrors();
+			TGraphErrors* prtd2 = new TGraphErrors();
+			TGraphErrors* prtd3 = new TGraphErrors();
+			TGraphErrors* prtd4 = new TGraphErrors();
+				for(int h=0;h<dark_count.size();h++){
+					double temp_dark_rate = dark_count[h]*1E6/80;
+					double temp_dark_rate_error = dark_count_error[h]*1E6/80;
+					prtd1->SetPoint(h,rtd1[h],temp_dark_rate);
+					prtd2->SetPoint(h,rtd2[h],temp_dark_rate);
+					prtd3->SetPoint(h,rtd3[h],temp_dark_rate);
+					prtd4->SetPoint(h,rtd4[h],temp_dark_rate);
+
+					prtd1->SetPointError(h,0,temp_dark_rate_error);
+					prtd2->SetPointError(h,0,temp_dark_rate_error);
+					prtd3->SetPointError(h,0,temp_dark_rate_error);
+					prtd4->SetPointError(h,0,temp_dark_rate_error);
+				}
+
+			prtd1->Sort();
+			prtd2->Sort();
+			prtd3->Sort();
+			prtd4->Sort();
+
+			prtd1->SetName("RTD1");
+			prtd2->SetName("RTD2");
+			prtd3->SetName("RTD3");
+			prtd4->SetName("RTD4");
+
+			prtd1->SetTitle("RTD1;Temp [C];DarkRate (Hz)");
+			prtd2->SetTitle("RTD2;Temp [C];DarkRate (Hz)");
+			prtd3->SetTitle("RTD3;Temp [C];DarkRate (Hz)");
+			prtd4->SetTitle("RTD4;Temp [C];DarkRate (Hz)");
+
+			prtd1->Write(); prtd2->Write(); prtd3->Write(); prtd4->Write();
+		}
+    dark_plot->SetName("dark_plotraw");
+    dark_plot->SetTitle(";Run (100s);Dark Rate (Hz)");
     TCanvas* cdark = new TCanvas("cdark","cdark");
     dark_plot->SetMarkerStyle(24);
     dark_plot->SetMarkerColor(2);
     dark_plot->Draw("AP");
+
+
+
+    if(charge_threshold!=-1){
+    TGraphErrors* dark_plotcut = new TGraphErrors();
+    for (int h=0;h<dark_countcut.size();h++){
+        double temp_dark_rate = dark_countcut[h]*1E6/80;
+        double temp_dark_rate_error = dark_countcut_error[h]*1E6/80;
+        dark_plotcut->SetPoint(h,h,temp_dark_rate);
+        dark_plotcut->SetPointError(h,0,temp_dark_rate_error);
+    }
+    dark_plotcut->SetName("dark_plotcut");
+    dark_plotcut->Write();
+    }
 
     dark_plot->Write();
     cdark->Write();

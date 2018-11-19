@@ -13,6 +13,7 @@
 
 #include <iostream>
 #include <cstdio>
+#include <cstdlib>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -24,7 +25,6 @@
 #include <fstream>      // std::ifstream
 #include <time.h>
 #include <numeric>
-#include <TMatrixDSymEigen.h>
 //#include <libRATEvent.so>
 #include <TVector3.h>
 #include <TString.h>
@@ -48,22 +48,21 @@
 #include <TVectorD.h>
 #include <TMatrix.h>
 #include <TH2Poly.h>
-//#include <boost/date_time.hpp>
 using namespace std;
 ifstream fin;
 bool signal_start = false;
 bool debug_mode = false;
-int current_sweep = 0;
 //define pulse finding parameters
-double pulseThresh =8.0 ;
+double pulseThresh = 8.0 ;
+double tpulseThresh = 8.0 ;
 double windowSize = 3.0;
 double edgeThresh = 3.0;
-double fix_threshold = 0.0028;
 double lookforward = 3.0;
+int current_sweep = 0;
 double number_of_peaks = 0.0;
 int adc_per_Volt = 8192;
+double resistance = 0.005;
 int baseline_samples_set = 160;
-
 
 //vector<int> run_info;
 vector<float> raw_waveform;
@@ -75,22 +74,28 @@ vector<double> start_pointv;
 vector<double> end_pointv;
 vector<double> baseline;
 vector<double> baselinev;
+vector<double> trigbaselinev;
 vector<double> pulse_left_edge;
 vector<double> pulse_right_edge;
 vector<double> amplitude_position;
 vector<double> pl;
 vector<double> pr;
-vector<double> trigger_time;
+//vector<double> trigger_time;
 vector<double> CalibratedTime;
 vector<double> windowratio;
-vector<double> sweep_rms;
-vector<int> sweep_n;
+vector<double> pulsebaseline_rms;
+vector<short int> event_n;
 
 vector<double> event_charge;
 vector<double> event_charge_ten;
 vector<double> event_baseline;
 vector<double> event_rms;
+
 int number_of_samples;
+int Nchannels;
+int Nevts;
+short int *buff;
+
 // Simpson Integral
 double SimpsIntegral(const vector<float>& samples, double baseline,int start, int end){
     int len;
@@ -122,11 +127,10 @@ double SimpsIntegral(const vector<float>& samples, double baseline,int start, in
 
 
 // Pulse Finding
-void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger){
-    //double pThresh = pulseThresh * rms * sqrt(windowSize);
-    double pThresh = fix_threshold;
+void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bool trig=false){
+    double pThresh = (trig ? tpulseThresh : pulseThresh) * rms * sqrt(windowSize);
     double eThresh = edgeThresh * rms * sqrt(windowSize);
-    double temp_charge = 0;
+	double temp_charge = 0;
     double temp_ten_charge = 0;
     //cout<<" vector size is : "<<v.size()<<endl;
     //getchar();
@@ -152,6 +156,7 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger){
 
             integral = 1.0e9;
             right = i + windowSize;
+            double thischarge = 0;
             bool end=false;
             while (!end){
                 while (integral > eThresh && right<number_of_samples-1){
@@ -185,18 +190,19 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger){
                 continue;
 
 			// noise veto
-	    int width = 5*(right - left);
-			int nright = right + width;
-			int nleft = left - width;
+			float width = (right - left);
+			float nwidth = 2*width;
+			int nright = right + nwidth;
+			int nleft = left - nwidth;
 			if(nright>nos){
 				nright = nos;
-				nleft -= (nleft>width ? width : 0);
+				nleft -= (nleft>nwidth ? nwidth : 0);
 			}
 			if(nleft<0){
 				nleft = 0;
-				nright += (nright<(nos-width) ? width : nos);
+				nright += (nright<(nos-nwidth) ? nwidth : nos);
 			}
-			double dratio = SimpsIntegral(v,b,nleft,nright)/SimpsIntegral(v,b,left,right);
+			double dratio = SimpsIntegral(v,b,nleft,nright)/( ( (nwidth+1)/width )*SimpsIntegral(v,b,left,right) );
 
             //cout<<" Peak is : "<<temp_peak<<" max is : "<<max<<endl;
             if (signal_start){
@@ -204,22 +210,24 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger){
                 amplitude_position.push_back(temp_peak);
                 pl.push_back(left);
                 pr.push_back(right);
-                charge_v.push_back(SimpsIntegral(v,b,left,right));
+                charge_v.push_back(SimpsIntegral(v,b,left,right)/resistance);
                 startv.push_back(temp_startv);
                 endv.push_back(temp_endv);
                 CalibratedTime.push_back(temp_peak-trigger);
 				windowratio.push_back(dratio);
-				sweep_n.push_back(current_sweep);
-				sweep_rms.push_back(b);
-                temp_charge +=SimpsIntegral(v,b,left,right);
+				pulsebaseline_rms.push_back(rms);
+				event_n.push_back(current_sweep);
+				temp_charge +=SimpsIntegral(v,b,left,right)/resistance;
                 if (i<300)
-                    temp_ten_charge += SimpsIntegral(v,b,left,right);
+                    temp_ten_charge += SimpsIntegral(v,b,left,right)/resistance;
             }
 
             pulse_left_edge.push_back(left);
             pulse_right_edge.push_back(right);
 
             //if (temp_peak>0 &&temp_peak<8000){
+            //if (thischarge<1.0)
+			if(trig) break;
 		    number_of_peaks ++;
             //}
             //cout<<" This is sample : "<<i<<" Charge integral is : "<<SimpsIntegral(v,b,left,right)<<endl;
@@ -233,11 +241,13 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger){
 
     }
     //getchar();
-    event_charge_ten.push_back(temp_ten_charge);
-    event_charge.push_back(temp_charge);
+	if (!trig){
+		event_charge_ten.push_back(temp_ten_charge);
+    	event_charge.push_back(temp_charge);
+	}
 }
 // Find the baseline
-double baseline_rms(vector<double> &v, vector<float> &sample, int nosamples,int ttime = 0){
+double baseline_rms(vector<double> &v, vector<float> &sample, int nosamples,int ttime,bool trig = false){
     double rms=0;
     double temp_base = 0;
     //double baseline_samples = accumulate(v.begin(),v.end(),0);
@@ -258,116 +268,90 @@ double baseline_rms(vector<double> &v, vector<float> &sample, int nosamples,int 
         cout<<" rms is : "<<rms<<" baseline is : "<<baseline_samples<<endl;
         getchar();
     }
-    event_baseline.push_back(baseline_samples);
-    event_rms.push_back(rms);
-    extract_event(sample,baseline_samples,rms,nosamples,ttime);
+    if(!trig){
+    	event_baseline.push_back(baseline_samples);
+    	event_rms.push_back(rms);
+    }
+    extract_event(sample,baseline_samples,rms,nosamples,ttime,trig);
     return baseline_samples;
 }
-/*void Trigger_info(string tfile,string wd){
-    char trigger_path [120];
-    sprintf(trigger_path,"%s/%s",wd.c_str(),tfile.c_str());
-    cout<<" We are opening trugger file : "<<trigger_path<<endl;
-    char linet[200];// temp char for line in the file
-    int pc =0, sw =0;
-    double rms_value_trigger = 0;
-    TString* bufft=new TString();
-    ifstream fint;
-    fint.open(trigger_path,ios::in);
-    cout<<" try to open file here"<<endl;
-    if (!fint.is_open()){
-        cout<<" Can't open the file "<<endl;
+//Trigger analysis
+double Trigger_info(vector<float> waveform){
+	double rms_value_trigger = baseline_rms(trigbaselinev,waveform,number_of_samples,0,true);// Calculate baseline and rms then pass to pulse finder
+	double time;
+	baselinev.clear();
+	if (pulse_left_edge.size() == 0){
+        time = 0;
+        cout<<" Can not find the trigger pulse for this event ! "<<endl;
     }
     else{
-        while(!fint.rdstate() ){
-        //while(sweep < 682){
-            fint.getline(linet,200);//>>datum;
-            //cout<<" each line is : "<<linet<<endl;;
-    		*bufft=linet;
-
-
-            if (bufft->Contains("Event")){
-                //cout<<" What we are seeing in the loop ? >> "<<linet<<endl;
-                if (sw>0){
-                    //cout<<" size baseline : "<<baselinev.size()<<endl;
-                    rms_value_trigger = baseline_rms(baselinev,raw_waveform,number_of_samples,0);// Calculate baseline and rms then pass to pulse finder
-
-                    baselinev.clear();
-		            if (sw%1000==0){
-                    	cout<<" This is sweep : "<<sw<<endl;
-                    }
-                    //if (pulse_left_edge[0] > 1000)
-                    //cout<<" size is : "<<pulse_left_edge.size()<<endl;
-                    //cout<<" pulse finding passed !, Trigger time is  : "<<pulse_left_edge[0]<<endl;
-                    if (pulse_left_edge.size() == 0){
-                        trigger_time.push_back(0);
-                        cout<<" Can not find the trigger pulse for this event ! "<<endl;
-                    }
-                    else{
-                        trigger_time.push_back(pulse_left_edge[0]);
-                    }
-
-
-                    pulse_left_edge.clear();
-                    pulse_right_edge.clear();
-
-
-                    raw_waveform.clear();
-                }
-                pc = 0;
-                sw ++;
-            }
-            //cout<<"pcount is : "<<pcount<<endl;
-            else{
-                double datum = bufft->Atof();
-                if (pc<number_of_samples+1){
-                    //if (isinf(datum) || isnan(datum) || datum > 200000 || datum<-1){
-                    //    datum=0;
-                    //}
-                    //cout<<" adc count : "<<datum<<endl;
-                    datum /= adc_per_Volt;
-                    //cout<<" volt : "<<datum<<endl;
-                    raw_waveform.push_back(datum);
-                    if (pc<baseline_samples_set){
-                        baselinev.push_back(datum);
-                    }
-
-                }
-                pc++;
-
-            }
-
-
-
-
-        }
+        time = (pulse_left_edge[0]);
     }
-    fint.close();
-    }*/
+    pulse_left_edge.clear();
+    pulse_right_edge.clear();
+    trigbaselinev.clear();
+    //waveform.clear();
+    return time;
+}
+
+void getwaveform(vector<float> &v,int channel,int numread,float mult=1,bool trig=false){
+	int starti = ((current_sweep-numread)*Nchannels + channel)*(4 + 2 + number_of_samples) + 4;
+	/*if(current_sweep%100000==0){
+		cout<<"starting at "<<starti<<" in buffer"<<endl;
+		cout<<"Evt "<<(current_sweep-numread)<<" of this buffer"<<endl;
+	}*/
+	double datum;
+	for(int i=0;i<number_of_samples;i++){
+		datum = (double)buff[i+starti]*mult/(double)adc_per_Volt;
+		v.push_back(datum);
+		if (i<baseline_samples_set)
+			if(!trig) baselinev.push_back(datum);
+			else trigbaselinev.push_back(datum);
+	}
+}
+int calcnumchannels(int mask){
+	int numchans=0;
+	while (mask>0){
+		numchans += mask%2;
+		mask /= 2;
+	}
+	return numchans;
+}
+
+
 static void show_usage(string name){
     cout<<" Usage : ./DDC10_data_readout [-co] file1 "<<name<<" Options:\n"
     <<" -o : Name of output file.\n"
     <<" -i : Name of input file.\n"
-    <<" -n : Number of Samples in one event\n"
     <<" -wd : Working directory\n"
-    <<" -t : filename for trigger pulse\n"
+	<<" -wform : Waveform channel\n"
+    <<" -t : trigger channel\n"
+	<<" -invert: invert waveform\n"
+	<<" -trigger : invert trigger pulse \n"
+	<<" -pt : pulse threshold\n"
+	<<" -e : write event tree\n"
     <<" -debug : Get in the debugging mode.\n"
     <<" -h or --help : Show the usage\n"
     <<" Enjoy ! -Ryan Wang"<<endl;
 }
 int main(int argc, char *argv[]){
+	string filename;
+	string outfilename;
+	string working_dir;
 
-    string filename;
-    string outfilename;
-    string triggerfilename;
-    string working_dir;
-    bool use_trigger = false;
+	bool use_trigger = false;
     bool trigger_inversion = false;
+	bool invert_waveform = false;
+	bool write_event = false;
 
-    if (argc<2){
+	int trig_channel;
+	int wform_channel=1;
+
+	if (argc<4){
         show_usage(argv[0]);
         return 1;
     }
-    for (int i=1;i<argc;++i){
+	for (int i=1;i<argc;++i){
         string arg = argv[i];
         if ((arg=="-h") || (arg=="--help")){
             show_usage(argv[0]);
@@ -376,9 +360,6 @@ int main(int argc, char *argv[]){
         else if (arg=="-wd"){
             working_dir = argv[i+1] ;
         }
-        else if (arg=="-n"){
-            number_of_samples = atoi(argv[i+1]);
-        }
         else if (arg=="-i") {
             filename = argv[i+1];
         }
@@ -386,41 +367,93 @@ int main(int argc, char *argv[]){
             outfilename = argv[i+1];
         }
         else if (arg=="-t"){
-            use_trigger = true;
-            triggerfilename = argv[i+1];
+            trig_channel = atoi(argv[i+1]);
+			use_trigger = true;
         }
+		else if (arg=="-wform"){
+            wform_channel = atoi(argv[i+1]);
+        }
+		else if (arg=="-bs"){
+            baseline_samples_set = atoi(argv[i+1]);
+        }
+		else if (arg=="-pt"){
+	            pulseThresh = atof(argv[i+1]);
+	    }
+		else if (arg=="-e"){
+	            write_event = true;
+	    }
         else if (arg=="-trigger"){
             trigger_inversion = true;
         }
+		else if (arg=="-invert"){
+			invert_waveform = true;
+		}
         else if (arg=="-debug"){
             debug_mode = true;
         }
     }
-    /*    if(use_trigger){
-    cout<<" Before getting trigger info, trigger filename is : "<<triggerfilename<<endl;
-    Trigger_info(triggerfilename,working_dir);
-    }*/
 
+	short int datum;
+	int dummy;
+	int mask,size;
+	char open_filename[200];// full input filename
+	sprintf(open_filename,"%s/%s",working_dir.c_str(),filename.c_str());
+    cout<<" We are opening "<<open_filename<<endl;
+	fin.open(open_filename,ios::binary|ios::in|ios::ate);
 
-    // Plots for debugging pulse finding algorithm
+	if (fin.is_open()){
+		//memblock.resize(size);
+		size = fin.tellg();
+		fin.seekg(0,ios::beg);
+		//cout<<"size: "<<size<<endl;
+		//numevts = new char [5];
+		fin.read((char*)&Nevts,sizeof(Nevts));
+		cout<<Nevts<<" Events"<<endl;
+
+		fin.read((char*)&number_of_samples,sizeof(number_of_samples));
+		cout<<number_of_samples<<" Samples"<<endl;
+
+		fin.read((char*)&mask,sizeof(mask));
+		cout<<"Mask: "<<mask<<endl;
+		Nchannels = calcnumchannels(mask);
+		cout<<Nchannels<<" channels"<<endl;
+
+		fin.read((char*)&dummy,sizeof(dummy));
+	}
+	else{
+		cout<<"Failed to open file"<<endl;
+		return -1;
+	}
+	int predsize = Nevts*Nchannels*(2*4 + 2*number_of_samples + 4) + 4*4;
+	if(size<predsize){
+		cout<<"Warning::Size predicted from header is greater than actual size"<<endl;
+		return -1;
+	}
+
+	if(wform_channel>=Nchannels || wform_channel<0 || ((trig_channel>=Nchannels || trig_channel<0) && use_trigger)){
+		cout<<"Channel numbers given do not match file header, double check your inputs."<<endl;
+		return -1;
+	}
+	int evtsize = Nchannels*(2*4 + 2*number_of_samples + 4);
+	int buffsize;
+	if((Nevts*evtsize)>20971520) buffsize = 20971520/evtsize;
+	else buffsize = Nevts;
+	cout<<"Using buffer of "<<buffsize<<" events"<<endl;
+
+	// Plots for debugging pulse finding algorithm
     TGraph* t11;
     TGraph* t22;
     TGraph* t33;
     TGraph* t44;
 
-    char linea[200];// temp char for line in the file
-    TString* buff=new TString();
-    char open_filename[200];// full input filename
+    //char linea[200];// temp char for line in the file
+    //TString* buff=new TString();
     char out_filename[200]; // full output filename
     int iana = 0; // TGraph counter
     int pcount=0; // Pulse counter
-    int sweep=0; //event counter
     double temp_sum=0;
     double rms_value;
-
-    sprintf(open_filename,"%s/%s",working_dir.c_str(),filename.c_str());
-
-    cout<<" We are opening "<<open_filename<<endl;
+	
 
     sprintf(out_filename,"%s/%s",working_dir.c_str(),outfilename.c_str());
     cout<<" Out put filename is : "<<out_filename<<endl;
@@ -444,141 +477,131 @@ int main(int argc, char *argv[]){
 	float trigger_t;
 
 	wforms_tree->Branch("pmt_waveforms",&waveforms[0],TString::Format("waveforms[%i]/F",number_of_samples));
-	//	if(use_trigger) wforms_tree->Branch("trigger_time",&trigger_t,"trigger_t/F");
+	if (use_trigger)
+		wforms_tree->Branch("trigger_time",&trigger_t,"trigger_t/F");
     // Store the waveform plot for debugging
     TCanvas *waveplot[100];
     vector<double> baseline_sweep;
-    signal_start = true;
-    baselinev.clear();
-    //reading data
-    fin.open(open_filename,ios::in);
-    if (!fin.is_open()){
-        cout<<" Can't open the file "<<endl;
-    }
-    else{
-        while(!fin.rdstate() ){
-        //while(sweep < 682){
-            fin.getline(linea,200);//>>datum;
-            //cout<<" each line is : "<<linea;
-    		*buff=linea;
+	vector<float> trigwaveform;
 
-
-            if (buff->Contains("Event")){
-
-                if (sweep>0){
-                    // For counting dark rate
-                    dark_hits->Fill(number_of_peaks);
-		    //          if(use_trigger) trigger_t=trigger_time[sweep-1];
-                    number_of_peaks = 0.0;
-		    std::copy(raw_waveform.begin(),raw_waveform.end(),waveforms);
-		    current_sweep = sweep-1;
-		    wforms_tree->Fill();
-                    rms_value = baseline_rms(baselinev,raw_waveform,number_of_samples);// Calculate baseline and rms then pass to pulse finder
-		            baseline_sweep.push_back(rms_value);// save baseline for checking baseline shifting
-                    //cout<<"This is sweep : "<<sweep<<" baseline is : "<<rms_value<<endl;
-                    //getchar();
-		            baselinev.clear();
-                    // store first 100 waveform for debugging pulse finder
-                    if (sweep < 100){
-                        for (int j=0;j<pulse_left_edge.size();j++){
-                            t22->SetPoint(j,pulse_left_edge[j],startv[j]);
-                            t33->SetPoint(j,pulse_right_edge[j],endv[j]);
-                        }
-
-                        char plotname [30];
-                        sprintf(plotname,"waveform%d",iana);
-                        waveplot[iana] = new TCanvas(plotname);
-                        TLine* line = new TLine(0,rms_value,number_of_samples,rms_value);
-                        line->SetLineColor(3);
-                        line->SetLineStyle(3);
-                        line->SetLineWidth(3);
-                        t22->SetMarkerColor(2);
-                        t22->SetMarkerStyle(3);
-                        t22->SetMarkerSize(3);
-                        t33->SetMarkerColor(4);
-                        t33->SetMarkerStyle(3);
-                        t33->SetMarkerSize(3);
-                        t11->Draw("alp");
-                        t22->Draw("p");
-                        t33->Draw("p");
-                        line->Draw("");
-                        waveplot[iana]->Write();
-                        cout<<" plotting the waveform, this is sweep : "<<sweep<<endl;
-                    }
-		            if (sweep%1000==0){
-                    	cout<<" This is sweep : "<<sweep<<endl;
-                    }
-		            iana++;
-                    pulse_left_edge.clear();
-                    pulse_right_edge.clear();
-                    startv.clear();
-                    endv.clear();
-                }
-
-                raw_waveform.clear();
-                if (sweep < 100){
-                    //cout<<" Create new TGraph ! "<<endl;
-                    t11 = new TGraph();
-                    t22 = new TGraph();
-                    t33 = new TGraph();
-                }
-                pcount = 0;
-                sweep ++;
+	int skip=0;
+	int readin=0;
+	int lastadd=0;
+	for(int sweep=0;sweep<Nevts;sweep++){
+		if((readin)<(sweep+1)){
+			int arrsize = buffsize*evtsize/2;
+			if((Nevts-readin)<buffsize){
+				arrsize = (Nevts-readin)*evtsize/2;
+			}
+			buff = new short int[arrsize];
+			fin.read((char*)&buff[0],arrsize*sizeof(buff[0]));
+			lastadd = readin;
+			readin += arrsize*2/evtsize;
+			
+			cout<<"Read in "<<readin<<" events so far"<<endl;
+		}
+		if (sweep%1000==0){
+			cout<<" This is sweep : "<<sweep<<endl;
+		}
+		current_sweep = sweep;
+		//cout<<"Searching through sweep "<<sweep<<endl;
+		skip = (2*4 + 2*number_of_samples + 4);
+		//for(int chan=0;chan<Nchannels;chan++){
+			if(use_trigger /*&& chan==trig_channel*/){
+				signal_start = false;
+				//fin.seekg(skip,ios::beg);
+				//fin.read((char*)&dummy,sizeof(dummy));
+				//fin.read((char*)&dummy,sizeof(dummy));
+				getwaveform(trigwaveform,trig_channel,lastadd,(trigger_inversion ? -1.0 : 1.0),true);
+				//fin.read((char*)&dummy,sizeof(dummy));
+				trigger_t = Trigger_info(trigwaveform);
+				trigwaveform.clear();
+				//trigger_t = trigger_time[sweep];
+			}
+			//else if(chan==wform_channel){
+				signal_start = true;
+				//fin.seekg(skip,ios::beg);
+				//fin.read((char*)&dummy,sizeof(dummy));
+				//fin.read((char*)&dummy,sizeof(dummy));
+				getwaveform(raw_waveform,wform_channel,lastadd,(invert_waveform ? -1.0 : 1.0));
+				//fin.read((char*)&dummy,sizeof(dummy));
+			//}
+			//else{
+			//	char *superdummy = new char[skip];
+				//fin.read(superdummy,skip);
+			//}
+		//}
+		std::copy(raw_waveform.begin(),raw_waveform.end(),waveforms);
+		wforms_tree->Fill();
+		number_of_peaks = 0.0;
+		rms_value = baseline_rms(baselinev,raw_waveform,number_of_samples,(use_trigger ? trigger_t : 0));
+		baseline_sweep.push_back(rms_value);// save baseline for checking baseline shifting
+		dark_hits->Fill(number_of_peaks);
+		baselinev.clear();
+		//fill canvases
+		if(sweep<100){
+			t11 = new TGraph();
+			t22 = new TGraph();
+			t33 = new TGraph();
+			for (int j=0;j<pulse_left_edge.size();j++){
+            	t22->SetPoint(j,pulse_left_edge[j],startv[j]);
+                t33->SetPoint(j,pulse_right_edge[j],endv[j]);
             }
-            //cout<<"pcount is : "<<pcount<<endl;
+			for (int sam=0;sam<number_of_samples;sam++){
+				t11->SetPoint(sam,sam,raw_waveform[sam]);
+			}
+			char plotname [30];
+			sprintf(plotname,"waveform%d",sweep);
+			waveplot[sweep] = new TCanvas(plotname);
+            TLine* line = new TLine(0,rms_value,number_of_samples,rms_value);
+            line->SetLineColor(3);
+            line->SetLineStyle(3);
+            line->SetLineWidth(3);
+            t22->SetMarkerColor(2);
+            t22->SetMarkerStyle(3);
+            t22->SetMarkerSize(3);
+            t33->SetMarkerColor(4);
+            t33->SetMarkerStyle(3);
+            t33->SetMarkerSize(3);
+            t11->Draw("alp");
+            t22->Draw("p");
+            t33->Draw("p");
+            line->Draw("");
+            waveplot[sweep]->Write();
+            cout<<" plotting the waveform, this is sweep : "<<sweep<<endl;
+		}
+        pulse_left_edge.clear();
+        pulse_right_edge.clear();
+        startv.clear();
+        endv.clear();
+		raw_waveform.clear();
+		//skip += ;
+	}
 
-
-
-            else{
-                double datum = buff->Atof();
-                if (pcount<number_of_samples+1){
-                    datum*=-1;
-
-                    datum /= adc_per_Volt;
-                    //cout<<" This is sample "<<pcount<<" with value : "<<datum<<endl;
-                    //if (isinf(datum) || isnan(datum) || datum > 200000 || datum<-1){
-                    //    datum=0;
-                    //}
-                    if (pcount<100){
-                        //if (debug_mode)
-                        //    cout<<" Raw data is for baseline : "<<datum<<endl;
-                        baselinev.push_back(datum);
-                    }
-
-                    raw_waveform.push_back(datum);
-                    t11->SetPoint(pcount,pcount,datum);
-                    temp_sum = h->GetBinContent(pcount+1);
-                    h->SetBinContent(pcount+1,temp_sum+datum);
-
-                }
-                pcount++;
-
-            }
-
-        }
-    }
-
-    //Fill Ntuple
+	//Fill Ntuple
     //pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime
     for (int i=0;i<amplitude.size();i++){
-      pulse->Fill(amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],sweep_rms[i],windowratio[i],sweep_n[i]);
+      pulse->Fill(amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],pulsebaseline_rms[i],windowratio[i],(float)event_n[i]);
     }
     TGraph* baseline_plot = new TGraph();
     for (int i=0;i<baseline_sweep.size();i++){
         baseline_plot->SetPoint(i,i,baseline_sweep[i]);
     }
-    for (int i=0;i<event_charge.size();i++){
-            event->Fill(event_charge[i],event_charge_ten[i],event_baseline[i],event_rms[i]);
-    }
+	if(write_event){
+    	for (int i=0;i<event_charge.size();i++){
+			event->Fill(event_charge[i],event_charge_ten[i],event_baseline[i],event_rms[i]);
+    	}
+	}
     //Baseline plot
     TCanvas* bplot = new TCanvas("bplot","bplot");
     baseline_plot->SetMarkerStyle(22);
     baseline_plot->Draw("AP");
 
-    cout<<" Total sweeps is : "<<sweep<<endl;
+    //cout<<" Total sweeps is : "<<sweep<<endl;
 
-    wforms_tree->Write();
+	wforms_tree->Write();
     pulse->Write();
+	if(write_event) event->Write();
     bplot->Write();
     fout->Write();
     fout->Close();
