@@ -576,7 +576,10 @@ int main(int argc, char *argv[]){
     baseline_plot->Draw("AP");
 
     cout<<" Total sweeps is : "<<sweep<<endl;
+	TObject *nosinfo = new TObject();
+	nosinfo->SetUniqueID(number_of_samples);
 
+	nosinfo->Write("Nsamples");
     wforms_tree->Write();
     pulse->Write();
     bplot->Write();

@@ -42,6 +42,7 @@
 #include <TH2F.h>
 #include <TMath.h>
 #include <TGraph.h>
+#include <TObject.h>
 #include <TGraphErrors.h>
 #include <TCanvas.h>
 #include <TStyle.h>
@@ -304,9 +305,10 @@ void getwaveform(vector<float> &v,int channel,int numread,float mult=1,bool trig
 	for(int i=0;i<number_of_samples;i++){
 		datum = (double)buff[i+starti]*mult/(double)adc_per_Volt;
 		v.push_back(datum);
-		if (i<baseline_samples_set)
+		if (i<baseline_samples_set){
 			if(!trig) baselinev.push_back(datum);
 			else trigbaselinev.push_back(datum);
+		}
 	}
 }
 int calcnumchannels(int mask){
@@ -453,7 +455,7 @@ int main(int argc, char *argv[]){
     int pcount=0; // Pulse counter
     double temp_sum=0;
     double rms_value;
-	
+
 
     sprintf(out_filename,"%s/%s",working_dir.c_str(),outfilename.c_str());
     cout<<" Out put filename is : "<<out_filename<<endl;
@@ -497,40 +499,24 @@ int main(int argc, char *argv[]){
 			fin.read((char*)&buff[0],arrsize*sizeof(buff[0]));
 			lastadd = readin;
 			readin += arrsize*2/evtsize;
-			
+
 			cout<<"Read in "<<readin<<" events so far"<<endl;
 		}
 		if (sweep%1000==0){
 			cout<<" This is sweep : "<<sweep<<endl;
 		}
 		current_sweep = sweep;
-		//cout<<"Searching through sweep "<<sweep<<endl;
-		skip = (2*4 + 2*number_of_samples + 4);
-		//for(int chan=0;chan<Nchannels;chan++){
-			if(use_trigger /*&& chan==trig_channel*/){
-				signal_start = false;
-				//fin.seekg(skip,ios::beg);
-				//fin.read((char*)&dummy,sizeof(dummy));
-				//fin.read((char*)&dummy,sizeof(dummy));
-				getwaveform(trigwaveform,trig_channel,lastadd,(trigger_inversion ? -1.0 : 1.0),true);
-				//fin.read((char*)&dummy,sizeof(dummy));
-				trigger_t = Trigger_info(trigwaveform);
-				trigwaveform.clear();
-				//trigger_t = trigger_time[sweep];
-			}
-			//else if(chan==wform_channel){
-				signal_start = true;
-				//fin.seekg(skip,ios::beg);
-				//fin.read((char*)&dummy,sizeof(dummy));
-				//fin.read((char*)&dummy,sizeof(dummy));
-				getwaveform(raw_waveform,wform_channel,lastadd,(invert_waveform ? -1.0 : 1.0));
-				//fin.read((char*)&dummy,sizeof(dummy));
-			//}
-			//else{
-			//	char *superdummy = new char[skip];
-				//fin.read(superdummy,skip);
-			//}
-		//}
+
+		if(use_trigger){
+			signal_start = false;
+			getwaveform(trigwaveform,trig_channel,lastadd,(trigger_inversion ? -1.0 : 1.0),true);
+			trigger_t = Trigger_info(trigwaveform);
+			trigwaveform.clear();
+		}
+
+		signal_start = true;
+		getwaveform(raw_waveform,wform_channel,lastadd,(invert_waveform ? -1.0 : 1.0));
+
 		std::copy(raw_waveform.begin(),raw_waveform.end(),waveforms);
 		wforms_tree->Fill();
 		number_of_peaks = 0.0;
@@ -597,8 +583,12 @@ int main(int argc, char *argv[]){
     baseline_plot->SetMarkerStyle(22);
     baseline_plot->Draw("AP");
 
-    //cout<<" Total sweeps is : "<<sweep<<endl;
+	TObject *nosinfo = new TObject();
+	nosinfo->SetUniqueID(number_of_samples);
 
+    cout<<" Total sweeps is : "<<sweep<<endl;
+
+	nosinfo->Write("Nsamples");
 	wforms_tree->Write();
     pulse->Write();
 	if(write_event) event->Write();
