@@ -81,6 +81,7 @@ vector<double> pulse_right_edge;
 vector<double> amplitude_position;
 vector<double> pl;
 vector<double> pr;
+vector<float> npeaks;
 //vector<double> trigger_time;
 vector<double> CalibratedTime;
 vector<double> windowratio;
@@ -344,7 +345,6 @@ int main(int argc, char *argv[]){
 	bool use_trigger = false;
     bool trigger_inversion = false;
 	bool invert_waveform = false;
-	bool write_event = false;
 
 	int trig_channel;
 	int wform_channel=1;
@@ -380,9 +380,6 @@ int main(int argc, char *argv[]){
         }
 		else if (arg=="-pt"){
 	            pulseThresh = atof(argv[i+1]);
-	    }
-		else if (arg=="-e"){
-	            write_event = true;
 	    }
         else if (arg=="-trigger"){
             trigger_inversion = true;
@@ -473,7 +470,7 @@ int main(int argc, char *argv[]){
 
     //Create Ntuple to store properties of pulses found by pulse finder
     TNtuple *pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:sweep");
-    TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms");
+    TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms:npulses");
 	TTree *wforms_tree = new TTree("waveforms","Waveform Tree");
 	float waveforms[8192];
 	float trigger_t;
@@ -523,6 +520,7 @@ int main(int argc, char *argv[]){
 		rms_value = baseline_rms(baselinev,raw_waveform,number_of_samples,(use_trigger ? trigger_t : 0));
 		baseline_sweep.push_back(rms_value);// save baseline for checking baseline shifting
 		dark_hits->Fill(number_of_peaks);
+		npeaks.push_back(number_of_peaks);
 		baselinev.clear();
 		//fill canvases
 		if(sweep<100){
@@ -573,11 +571,10 @@ int main(int argc, char *argv[]){
     for (int i=0;i<baseline_sweep.size();i++){
         baseline_plot->SetPoint(i,i,baseline_sweep[i]);
     }
-	if(write_event){
-    	for (int i=0;i<event_charge.size();i++){
-			event->Fill(event_charge[i],event_charge_ten[i],event_baseline[i],event_rms[i]);
-    	}
-	}
+    for (int i=0;i<event_charge.size();i++){
+		event->Fill(event_charge[i],event_charge_ten[i],event_baseline[i],event_rms[i],npeaks[i]);
+    }
+
     //Baseline plot
     TCanvas* bplot = new TCanvas("bplot","bplot");
     baseline_plot->SetMarkerStyle(22);
