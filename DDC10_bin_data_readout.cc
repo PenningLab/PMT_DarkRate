@@ -588,7 +588,7 @@ int main(int argc, char *argv[]){
 	nosinfo->Write("Nsamples");
 	wforms_tree->Write();
     pulse->Write();
-	if(write_event) event->Write();
+	event->Write();
     bplot->Write();
     fout->Write();
     fout->Close();
