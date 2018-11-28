@@ -37,7 +37,7 @@ done
 
 for j in `seq ${init} ${num}`
 do
- cmdarr=(./DDC10_data_readout -wd ${dirname} -i ${j}_PMT.txt -o ${j}_PMT_Trigger.root -n ${number_samples} -invert)
+ cmdarr=(./DDC10_data_readout -wd ${dirname} -i ${j}_PMT.txt -o ${j}_PMT_Trigger.root -n ${number_samples} -invert -e)
 
  if [ "${bsam}" -ne -1 ]; then
   cmdarr+=(-bs ${bsam})
