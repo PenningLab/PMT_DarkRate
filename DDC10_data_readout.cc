@@ -86,6 +86,7 @@ vector<double> CalibratedTime;
 vector<double> windowratio;
 vector<double> pulsebaseline_rms;
 vector<short int> event_n;
+vector<float> npeaks;
 
 vector<double> event_charge;
 vector<double> event_charge_ten;
@@ -460,7 +461,7 @@ int main(int argc, char *argv[]){
 
     //Create Ntuple to store properties of pulses found by pulse finder
     TNtuple *pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:sweep");
-    TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms");
+    TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms:npulses");
 	TTree *wforms_tree = new TTree("waveforms","Waveform Tree");
 	float waveforms[8192];
 	float trigger_t;
@@ -491,6 +492,7 @@ int main(int argc, char *argv[]){
                 if (sweep>0){
                     // For counting dark rate
                     dark_hits->Fill(number_of_peaks);
+					npeaks.push_back(number_of_peaks);
                     number_of_peaks = 0.0;
 					current_sweep = sweep-1;
 					if (use_trigger)
@@ -564,7 +566,7 @@ int main(int argc, char *argv[]){
                     //if (isinf(datum) || isnan(datum) || datum > 200000 || datum<-1){
                     //    datum=0;
                     //}
-                    if (pcount<100){
+                    if (pcount<baseline_samples_set){
                         //if (debug_mode)
                         //    cout<<" Raw data is for baseline : "<<datum<<endl;
                         baselinev.push_back(datum);
@@ -594,7 +596,7 @@ int main(int argc, char *argv[]){
     }
 	if(write_event){
     	for (int i=0;i<event_charge.size();i++){
-			event->Fill(event_charge[i],event_charge_ten[i],event_baseline[i],event_rms[i]);
+			event->Fill(event_charge[i],event_charge_ten[i],event_baseline[i],event_rms[i],npeaks[i]);
     	}
 	}
     //Baseline plot
