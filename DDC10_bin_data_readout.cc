@@ -583,7 +583,7 @@ int main(int argc, char *argv[]){
 	TObject *nosinfo = new TObject();
 	nosinfo->SetUniqueID(number_of_samples);
 
-    cout<<" Total sweeps is : "<<sweep<<endl;
+    cout<<" Total sweeps is : "<<Nevts<<endl;
 
 	nosinfo->Write("Nsamples");
 	wforms_tree->Write();
