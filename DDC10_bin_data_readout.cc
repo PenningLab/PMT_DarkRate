@@ -249,8 +249,8 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
 	}
 }
 // Find the baseline
-double baseline_rms(vector<double> &v, vector<float> &sample, int nosamples,int ttime,bool trig = false){
-    double rms=0;
+double baseline_rms(vector<double> &v, vector<float> &sample,double rms){
+	rms = 0;
     double temp_base = 0;
     //double baseline_samples = accumulate(v.begin(),v.end(),0);
     double baseline_samples=0;
@@ -270,16 +270,14 @@ double baseline_rms(vector<double> &v, vector<float> &sample, int nosamples,int 
         cout<<" rms is : "<<rms<<" baseline is : "<<baseline_samples<<endl;
         getchar();
     }
-    if(!trig){
-    	event_baseline.push_back(baseline_samples);
-    	event_rms.push_back(rms);
-    }
-    extract_event(sample,baseline_samples,rms,nosamples,ttime,trig);
+
     return baseline_samples;
 }
 //Trigger analysis
 double Trigger_info(vector<float> waveform){
-	double rms_value_trigger = baseline_rms(trigbaselinev,waveform,number_of_samples,0,true);// Calculate baseline and rms then pass to pulse finder
+	double rms_trigger;
+	double base_trigger = baseline_rms(trigbaselinev,waveform,rms_trigger);// Calculate baseline and rms then pass to pulse finder
+	extract_event(waveform,base_trigger,rms_trigger,number_of_samples,0,true);
 	double time;
 	baselinev.clear();
 	if (pulse_left_edge.size() == 0){
@@ -341,10 +339,12 @@ int main(int argc, char *argv[]){
 	string filename;
 	string outfilename;
 	string working_dir;
+	string baseline_file;
 
 	bool use_trigger = false;
     bool trigger_inversion = false;
 	bool invert_waveform = false;
+	bool use_basefile = false;
 
 	int trig_channel;
 	int wform_channel=1;
@@ -378,8 +378,15 @@ int main(int argc, char *argv[]){
 		else if (arg=="-bs"){
             baseline_samples_set = atoi(argv[i+1]);
         }
+		else if (arg=="-bf"){
+            baseline_file = argv[i+1];
+			use_basefile = true;
+        }
 		else if (arg=="-pt"){
 	            pulseThresh = atof(argv[i+1]);
+	    }
+		else if (arg=="-win"){
+	            windowSize = atof(argv[i+1]);
 	    }
         else if (arg=="-trigger"){
             trigger_inversion = true;
@@ -391,6 +398,21 @@ int main(int argc, char *argv[]){
             debug_mode = true;
         }
     }
+
+	double fixedbase;
+	double fixedrms;
+	if(use_basefile){
+		ifstream basefile;
+		basefile.open(baseline_file.c_str());
+		if(!basefile.is_open()){
+			cout<<"Couldn't open baseline file | Using standard methods instead"<<endl;
+			use_basefile = false;
+		}
+		else{
+			basefile >> fixedbase >> fixedrms;
+			basefile.close();
+		}
+	}
 
 	short int datum;
 	int dummy;
@@ -517,7 +539,11 @@ int main(int argc, char *argv[]){
 		std::copy(raw_waveform.begin(),raw_waveform.end(),waveforms);
 		wforms_tree->Fill();
 		number_of_peaks = 0.0;
-		rms_value = baseline_rms(baselinev,raw_waveform,number_of_samples,(use_trigger ? trigger_t : 0));
+		double thisbase = (use_basefile ? fixedrms : 0);
+		rms_value = (use_basefile ? fixedbase : baseline_rms(baselinev,raw_waveform,thisbase));
+		extract_event(raw_waveform,rms_value,thisbase,number_of_samples,(use_trigger ? trigger_t : 0));
+		event_baseline.push_back(rms_value);
+    	event_rms.push_back(thisbase);
 		baseline_sweep.push_back(rms_value);// save baseline for checking baseline shifting
 		dark_hits->Fill(number_of_peaks);
 		npeaks.push_back(number_of_peaks);

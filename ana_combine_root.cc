@@ -212,7 +212,7 @@ int main(int argc, char *argv[]){
 			temp_count /= (double)numevts;
 			temp_count_err /= (double)numevts;
 			dark_count2.back() = temp_count;
-			dark_count2_error.back() = sqrt(temp_count_err - temp_count*temp_count);
+			dark_count2_error.back() = sqrt(temp_count_err - temp_count*temp_count)/(double)numevts;
 		}
 		fin->Close();
 	}//main for loop
