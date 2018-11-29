@@ -52,7 +52,7 @@ while true; do
 			;;
 		--bfile )
 			usebase=0
-			basefile=$2
+			base_filename=$2
 			echo "using baseline file ${base_filename}"
 			shift
 			;;
