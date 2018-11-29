@@ -54,6 +54,7 @@ while true; do
 			basefile=$2
 			echo "using baseline file ${base_filename}"
 			shift
+			;;
 		-- )
 			shift ;
 			break
