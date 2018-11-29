@@ -564,9 +564,17 @@ int main(int argc, char *argv[]){
 			sprintf(plotname,"waveform%d",sweep);
 			waveplot[sweep] = new TCanvas(plotname);
             TLine* line = new TLine(0,rms_value,number_of_samples,rms_value);
+			TLine* line2 = new TLine(0,rms_value-thisbase,number_of_samples,rms_value-thisbase);
+			TLine* line3 = new TLine(0,rms_value+thisbase,number_of_samples,rms_value+thisbase);
             line->SetLineColor(3);
             line->SetLineStyle(3);
             line->SetLineWidth(3);
+			line2->SetLineColor(5);
+			line2->SetLineStyle(3);
+            line2->SetLineWidth(3);
+			line3->SetLineColor(5);
+			line3->SetLineStyle(3);
+            line3->SetLineWidth(3);
             t22->SetMarkerColor(2);
             t22->SetMarkerStyle(3);
             t22->SetMarkerSize(3);
@@ -577,6 +585,8 @@ int main(int argc, char *argv[]){
             t22->Draw("p");
             t33->Draw("p");
             line->Draw("");
+			line2->Draw("");
+			line3->Draw("");
             waveplot[sweep]->Write();
             cout<<" plotting the waveform, this is sweep : "<<sweep<<endl;
 		}
