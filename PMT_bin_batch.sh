@@ -14,7 +14,7 @@ pth=-1
 trig=-1
 invert=-1
 win=-1
-basefile=-1
+usebase=-1
 shift 3
 TEMP=`getopt -o i:b:b:p:T: --long pmt,win:,bfile: -n 'PMT_bin_batch.sh' -- "$@"`
 eval set -- "$TEMP"
@@ -51,6 +51,7 @@ while true; do
 			shift
 			;;
 		--bfile )
+			usebase=0
 			basefile=$2
 			echo "using baseline file ${base_filename}"
 			shift
@@ -81,7 +82,7 @@ do
  if [ "${win}" -ne -1 ]; then
   cmdarr+=(-win ${win})
  fi
- if [ "${base_filename}" -ne -1 ]; then
+ if [ "${usebase}" -ne -1 ]; then
   cmdarr+=(-bf ${base_filename})
  fi
  if [ "${invert}" -eq -1 ]; then
