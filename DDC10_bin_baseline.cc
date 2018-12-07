@@ -153,9 +153,6 @@ int main(int argc, char *argv[]){
         else if (arg=="-o"){
             outfilename = argv[i+1];
         }
-		else if (arg=="-bo"){
-            baseoutfilename = argv[i+1];
-        }
 		else if (arg=="-wform"){
             wform_channel = atoi(argv[i+1]);
         }
@@ -323,17 +320,18 @@ int main(int argc, char *argv[]){
     cout<<" Total sweeps is : "<<Nevts<<endl;
 
 	nosinfo->Write("Nsamples");
+	TVectorD mbase(1);
+	mbase[0] = mean_baseline;
+	mbase.Write("baseline");
+	TVectorD mrms(1);
+	mrms[0] = mean_rms;
+	mrms.Write("rms");
+
 	wforms_tree->Write();
 	event->Write();
     bplot->Write();
     fout->Write();
     fout->Close();
 
-	ofstream baseout;
-	char base_filename[200];// full input filename
-	sprintf(base_filename,"%s/%s",working_dir.c_str(),baseoutfilename.c_str());
-	baseout.open(base_filename);
-	baseout << mean_baseline << " " << mean_rms << endl;
-	baseout.close();
     return 0;
 }
