@@ -87,11 +87,15 @@ vector<double> CalibratedTime;
 vector<double> windowratio;
 vector<double> pulsebaseline_rms;
 vector<short int> event_n;
+vector<double> triggerHeight;
+vector<double> triggerPosition;
+vector<double> triggerWidth;
 
 vector<double> event_charge;
 vector<double> event_charge_ten;
 vector<double> event_baseline;
 vector<double> event_rms;
+vector<double> event_time;
 
 int number_of_samples;
 int Nchannels;
@@ -130,8 +134,8 @@ double SimpsIntegral(const vector<float>& samples, double baseline,int start, in
 
 // Pulse Finding
 void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bool trig=false){
-    double pThresh = (trig ? tpulseThresh : pulseThresh) * rms * sqrt(windowSize);
-    double eThresh = edgeThresh * rms * sqrt(windowSize);
+    double pThresh = (trig ? tpulseThresh : pulseThresh) * rms * windowSize;
+    double eThresh = edgeThresh * rms * windowSize;
 	double temp_charge = 0;
     double temp_ten_charge = 0;
     //cout<<" vector size is : "<<v.size()<<endl;
@@ -146,14 +150,20 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
         double temp_endv = 0;
 
         if (integral > pThresh){
-            //cout<<" This is sample : "<<i<<" integral value is : "<<integral<<" pThresh is : "<<pThresh<<endl;
+            if (debug_mode){
+				cout<<" This is sample : "<<i<<" integral value is : "<<integral<<" pThresh is : "<<pThresh<<endl;
+			}
             left = i;
             integral = 1.0e9;
             while (integral > eThresh && left > windowSize){
                 left --;
                 integral = SimpsIntegral(v,b,left,left+windowSize);
                 temp_startv = v[left];
+				if (debug_mode){
 
+					cout<<"Left is  : "<<left<<" integral is : "<<integral<<" eThresh is : "<<eThresh<<endl;
+					getchar();
+				}
             }
 
             integral = 1.0e9;
@@ -223,6 +233,11 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
                 if (i<300)
                     temp_ten_charge += SimpsIntegral(v,b,left,right)/resistance;
             }
+	        else{
+		        triggerHeight.push_back(max);
+		        triggerPosition.push_back(temp_peak);
+		        triggerWidth.push_back(right-left);
+	        }
 
             pulse_left_edge.push_back(left);
             pulse_right_edge.push_back(right);
@@ -231,6 +246,7 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
             //if (thischarge<1.0)
 			if(trig) break;
 		    number_of_peaks ++;
+		    if(number_of_peaks==1) event_time.push_back(pulse_right_edge[0]);
             //}
             //cout<<" This is sample : "<<i<<" Charge integral is : "<<SimpsIntegral(v,b,left,right)<<endl;
 
@@ -249,34 +265,33 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
 	}
 }
 // Find the baseline
-double baseline_rms(vector<double> &v, vector<float> &sample,double rms){
-	rms = 0;
+double baseline_rms(vector<double> &v, vector<float> &sample,double *irms){
+	double rms = 0;
     double temp_base = 0;
     //double baseline_samples = accumulate(v.begin(),v.end(),0);
     double baseline_samples=0;
     for (int k=0;k<v.size();k++){
 	       baseline_samples += v[k];
     }
-    if (signal_start&&debug_mode)
-        cout<<" baseline_samples is  : "<<baseline_samples<<endl;
+
     baseline_samples /= v.size();
     for (int i=0;i<v.size();i++){
-        if (signal_start&&debug_mode)
-            cout<<" baseline sample is  : "<<v[i]<<endl;
+        //if (signal_start&&debug_mode)
+        //    cout<<" baseline sample is  : "<<v[i]<<endl;
         rms += pow(v[i] - baseline_samples,2);
     }
     rms = sqrt(rms / v.size());
-    if (signal_start&&debug_mode){
-        cout<<" rms is : "<<rms<<" baseline is : "<<baseline_samples<<endl;
-        getchar();
-    }
+    //if (signal_start&&debug_mode){
+    //    cout<<" rms is : "<<rms<<" baseline is : "<<baseline_samples<<endl;
 
+    //}
+	irms[0] = rms;
     return baseline_samples;
 }
 //Trigger analysis
 double Trigger_info(vector<float> waveform){
-	double rms_trigger;
-	double base_trigger = baseline_rms(trigbaselinev,waveform,rms_trigger);// Calculate baseline and rms then pass to pulse finder
+	double rms_trigger=0;
+	double base_trigger = baseline_rms(trigbaselinev,waveform,&rms_trigger);// Calculate baseline and rms then pass to pulse finder
 	extract_event(waveform,base_trigger,rms_trigger,number_of_samples,0,true);
 	double time;
 	baselinev.clear();
@@ -402,16 +417,20 @@ int main(int argc, char *argv[]){
 	double fixedbase;
 	double fixedrms;
 	if(use_basefile){
-		ifstream basefile;
-		basefile.open(baseline_file.c_str());
-		if(!basefile.is_open()){
+		TFile *basefile = new TFile(baseline_file.c_str(),"READ");
+		if(basefile == NULL){
 			cout<<"Couldn't open baseline file | Using standard methods instead"<<endl;
 			use_basefile = false;
 		}
 		else{
-			basefile >> fixedbase >> fixedrms;
-			basefile.close();
+			TVectorD* fbase = (TVectorD*)basefile->Get("baseline");
+			TVectorD* frms = (TVectorD*)basefile->Get("rms");
+			fixedbase = fbase[0][0];
+			fixedrms = frms[0][0];
+			delete fbase;
+			delete frms;
 		}
+		basefile->Close();
 	}
 
 	short int datum;
@@ -487,12 +506,17 @@ int main(int argc, char *argv[]){
     h->GetXaxis()->SetLabelFont(132);
     h->GetYaxis()->SetLabelFont(132);
     //Tetsing the dark hit counter
-    TH1F* dark_hits = new TH1F("dark_hits","dark_hits",100,0,10);
+    TH1F* dark_hits = new TH1F("dark_hits","dark_hits",100,-0.5,99.5);
     //dark_hits->SetBit(TH1::kCanRebin);
 
     //Create Ntuple to store properties of pulses found by pulse finder
-    TNtuple *pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:sweep");
-    TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms:npulses");
+    TNtuple *pulse;
+	if(use_trigger)
+	 	pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:sweep:triggerpulseHeight:triggerpulseWidth:triggerpulsePeakTime");
+	else
+    	pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:sweep");
+
+	TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms:npulses:firstPulse");
 	TTree *wforms_tree = new TTree("waveforms","Waveform Tree");
 	float waveforms[8192];
 	float trigger_t;
@@ -523,6 +547,7 @@ int main(int argc, char *argv[]){
 		}
 		if (sweep%1000==0){
 			cout<<" This is sweep : "<<sweep<<endl;
+			cout<<"Trigger time: "<<trigger_t<<endl;
 		}
 		current_sweep = sweep;
 
@@ -540,10 +565,11 @@ int main(int argc, char *argv[]){
 		wforms_tree->Fill();
 		number_of_peaks = 0.0;
 		double thisbase = (use_basefile ? fixedrms : 0);
-		rms_value = (use_basefile ? fixedbase : baseline_rms(baselinev,raw_waveform,thisbase));
+		rms_value = (use_basefile ? fixedbase : baseline_rms(baselinev,raw_waveform,&thisbase));
 		extract_event(raw_waveform,rms_value,thisbase,number_of_samples,(use_trigger ? trigger_t : 0));
 		event_baseline.push_back(rms_value);
-    	event_rms.push_back(thisbase);
+		event_rms.push_back(thisbase);
+		//event_time.push_back(number_of_samples);
 		baseline_sweep.push_back(rms_value);// save baseline for checking baseline shifting
 		dark_hits->Fill(number_of_peaks);
 		npeaks.push_back(number_of_peaks);
@@ -600,15 +626,18 @@ int main(int argc, char *argv[]){
 
 	//Fill Ntuple
     //pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime
+    cout<<" before tree fill !"<<endl;
     for (int i=0;i<amplitude.size();i++){
-      pulse->Fill(amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],pulsebaseline_rms[i],windowratio[i],(float)event_n[i]);
+      if(use_trigger) pulse->Fill(amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],pulsebaseline_rms[i],windowratio[i],(float)event_n[i],triggerHeight[i],triggerWidth[i],triggerPosition[i]);
+      else pulse->Fill(amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],pulsebaseline_rms[i],windowratio[i],(float)event_n[i]);
     }
+    cout<<" after tree fill ! "<<endl;
     TGraph* baseline_plot = new TGraph();
     for (int i=0;i<baseline_sweep.size();i++){
         baseline_plot->SetPoint(i,i,baseline_sweep[i]);
     }
     for (int i=0;i<event_charge.size();i++){
-		event->Fill(event_charge[i],event_charge_ten[i],event_baseline[i],event_rms[i],npeaks[i]);
+      event->Fill(event_charge[i],event_charge_ten[i],event_baseline[i],event_rms[i],npeaks[i],event_time[i]);
     }
 
     //Baseline plot
