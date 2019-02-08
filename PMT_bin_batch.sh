@@ -18,8 +18,10 @@ usebase=-1
 
 it=-1
 outname="PMT_Trigger.root"
+nsamps=-1
 shift 3
-TEMP=`getopt -o i:b:b:p:T:o: --long pmt,tri,sit:,win:,bfile: -n 'PMT_bin_batch.sh' -- "$@"`
+
+TEMP=`getopt -o i:b:b:p:T:o: --long pmt,tri,sit:,win:,bfile:,nsam: -n 'PMT_bin_batch.sh' -- "$@"`
 
 eval set -- "$TEMP"
 while true; do
@@ -66,6 +68,10 @@ while true; do
 			echo "using baseline file ${base_filename}"
 			shift
 			;;
+		--nsam )
+			nsamps=$2
+			echo "Only analysing first ${nsamps} samples"
+			shift
 		--sit )
 			it=$2
 			echo "using baseline file ${base_filename}"
@@ -104,6 +110,9 @@ do
  if [ "${invert}" -eq -1 ]; then
   cmdarr+=(-invert)
  fi
+ if [ "${nsamps}" -ne -1 ]; then
+  cmdarr+=(-sams ${nsamps})
+fi
  if [ "${it}" -ne -1 ]; then
   cmdarr+=(-sit ${it})
  fi

@@ -53,11 +53,15 @@ using namespace std;
 ifstream fin;
 bool signal_start = false;
 bool debug_mode = false;
+
+bool lim_sams = false;
+
 bool smoothing = false;
 bool rolling = false;
 bool triangle = false;
 bool boxsmoothing = false;
 bool use_basefile = false;
+
 //define pulse finding parameters
 double pulseThresh = 8.0 ;
 double tpulseThresh = 8.0 ;
@@ -91,7 +95,10 @@ vector<double> amplitude_position;
 vector<double> pl;
 vector<double> pr;
 vector<float> npeaks;
+
+vector<double> biggeststep;
 vector<float> smoothingv;
+
 //vector<double> trigger_time;
 vector<double> CalibratedTime;
 vector<double> windowratio;
@@ -165,7 +172,10 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
         int temp_peak = 0;
         double temp_startv = 0;
         double temp_endv = 0;
+
+		double temp_bigstep = 0;
         double temp_charge = 0;
+
 
         if (integral > pThresh){
             if (debug_mode){
@@ -215,6 +225,7 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
                     max = s;
                     temp_peak = j;
                 }
+				if ( (v[j+1]-v[j]) > temp_bigstep) temp_bigstep = v[j+1] - v[j];
             }
             if (right >nos)
                 continue;
@@ -265,6 +276,7 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
 				windowratio.push_back(dratio);
 				pulsebaseline_rms.push_back(rms);
 				event_n.push_back(current_sweep);
+				biggeststep.push_back(temp_bigstep);
 				temp_charge +=SimpsIntegral(v,b,left,right)/resistance;
                 if (i<300)
                     temp_ten_charge += SimpsIntegral(v,b,left,right)/resistance;
@@ -519,11 +531,9 @@ int main(int argc, char *argv[]){
     bool trigger_inversion = false;
 	bool invert_waveform = false;
 
-
-
+	int num_sams = 0;
 	int trig_channel;
 	int wform_channel=1;
-
 
 	if (argc<4){
         show_usage(argv[0]);
@@ -569,6 +579,10 @@ int main(int argc, char *argv[]){
         }
 		else if (arg=="-invert"){
 			invert_waveform = true;
+		}
+		else if (arg=="-sams"){
+			lim_sams = true;
+			num_sams = atof(argv[i+1]);
 		}
         else if (arg=="-debug"){
             debug_mode = true;
@@ -658,7 +672,7 @@ int main(int argc, char *argv[]){
 	}
 	int evtsize = Nchannels*(2*4 + 2*number_of_samples + 4);
 	int buffsize;
-	if((Nevts*evtsize)>20971520) buffsize = 20971520/evtsize;
+	if((Nevts*evtsize)>335544320) buffsize = 335544320/evtsize;
 	else buffsize = Nevts;
 	cout<<"Using buffer of "<<buffsize<<" events"<<endl;
 
@@ -695,9 +709,9 @@ int main(int argc, char *argv[]){
     //Create Ntuple to store properties of pulses found by pulse finder
     TNtuple *pulse;
 	if(use_trigger)
-	 	pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:sweep:triggerpulseHeight:triggerpulseWidth:triggerpulsePeakTime");
+	 	pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:sweep:bigstep:triggerpulseHeight:triggerpulseWidth:triggerpulsePeakTime");
 	else
-    	pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:sweep");
+    	pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:sweep:bigstep");
 
 	TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms:npulses:firstPulse");
 	TTree *wforms_tree = new TTree("waveforms","Waveform Tree");
@@ -749,16 +763,16 @@ int main(int argc, char *argv[]){
 		number_of_peaks = 0.0;
 		double thisbase = (use_basefile ? fixedrms : 0);
 
-    if (smoothing){
-      smoothingv.clear();
-      smoothingv = Smoothen(raw_waveform);
-      rms_value = (use_basefile ? fixedbase : baseline_rms(smoothedBaseLine,smoothingv,thisbase));
-    }
-    else {            
-      rms_value = (use_basefile ? fixedbase : baseline_rms(baselinev,raw_waveform,thisbase));
-      extract_event(raw_waveform,rms_value,thisbase,number_of_samples,(use_trigger ? trigger_t : 0));
-    }
-        
+		if (smoothing){
+			smoothingv.clear();
+			smoothingv = Smoothen(raw_waveform);
+			rms_value = (use_basefile ? fixedbase : baseline_rms(smoothedBaseLine,smoothingv,thisbase));
+		}
+		else {
+			rms_value = (use_basefile ? fixedbase : baseline_rms(baselinev,raw_waveform,thisbase));
+			extract_event(raw_waveform,rms_value,thisbase,number_of_samples,(use_trigger ? trigger_t : 0));
+  		}
+
     if (debug_mode){
       cout<<" basline is  : "<<rms_value<<" rms is : "<<thisbase<<endl;
       getchar();
@@ -833,8 +847,8 @@ int main(int argc, char *argv[]){
     //pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime
     cout<<" before tree fill !"<<endl;
     for (int i=0;i<amplitude.size();i++){
-      if(use_trigger) pulse->Fill(amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],pulsebaseline_rms[i],windowratio[i],(float)event_n[i],triggerHeight[i],triggerWidth[i],triggerPosition[i]);
-      else pulse->Fill(amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],pulsebaseline_rms[i],windowratio[i],(float)event_n[i]);
+      if(use_trigger) pulse->Fill(amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],pulsebaseline_rms[i],windowratio[i],(float)event_n[i],biggeststep[i],triggerHeight[i],triggerWidth[i],triggerPosition[i]);
+      else pulse->Fill(amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],pulsebaseline_rms[i],windowratio[i],(float)event_n[i],biggeststep[i]);
     }
     cout<<" after tree fill ! "<<endl;
     TGraph* baseline_plot = new TGraph();
