@@ -72,6 +72,9 @@ int main(int argc, char *argv[]){
 	bool event_tree_enable = false;
 	bool use_temp = false;
 	bool trig_pmt = false;
+	bool use_frac = false;
+	int frac_time = 0;
+	int frac_start = 0;
 	float charge_threshold = -1;
 	double num_sweeps=-1;
 	int initial_run = 0;
@@ -115,7 +118,12 @@ int main(int argc, char *argv[]){
 		}
 		else if (arg=="-pmt"){
 		  trig_pmt = true;
-                }
+        }
+		else if (arg=="-frac"){
+			use_frac = true;
+			frac_time = atof(argv[i+1]);
+			frac_start = atof(argv[i+2]);
+		}
 
 	}
 	if (out_dir=="") out_dir = working_dir;
@@ -129,12 +137,20 @@ int main(int argc, char *argv[]){
 	sprintf(out_path,"%s/%s",out_dir.c_str(),outfilename.c_str());
 	cout<<"Creating output file"<<endl;
 	TFile *fout = new TFile(out_path,"RECREATE");
-	TNtuple *pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:Run:sweep:triggerpulseHeight:triggerpulseWidth:triggerpulsePeakTime");
-	TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms:npulses");
+	TNtuple *pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:Run:sweep:bigstep:triggerpulseHeight:triggerpulseWidth:triggerpulsePeakTime");
+	//TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms:npulses");
+
 	//}
 	// variables
-	float pulseHeight=0,pulseRightEdge=0,pulseLeftEdge=0,pulseCharge=0,pulsePeakTime=0,CalibratedTime=0,windowRatio=0,baselinerms=0,sweep=0;
-	float charge=0,charge_frac=0,baseline=0,rms=0,npeaks=0,firstTime=0,triggerpulseHeight=0,triggerpulseWidth=0,triggerpulsePeakTime=0;
+	float pulseHeight=0,pulseRightEdge=0,pulseLeftEdge=0,pulseCharge=0,pulsePeakTime=0,CalibratedTime=0,windowRatio=0,baselinerms=0,sweep=0,bigstep=0;
+	float charge=0,charge_frac=0,baseline=0,rms=0,npeaks=0,firstTime=0,triggerpulseHeight=0,triggerpulseWidth=0,triggerpulsePeakTime=0,mycharge_fracj=0;
+	TTree *event = new TTree("event","event");
+	event->Branch("charge",&charge,"charge/F");
+	event->Branch("charge_frac",&charge_frac,"charge_frac/F");
+	event->Branch("baseline",&baseline,"baseline/F");
+	event->Branch("rms",&rms,"rms/F");
+	event->Branch("npulses",&npeaks,"npulse/F");
+	if(use_frac) event->Branch("mycharge_frac",&mycharge_fracj,"mycharge_fracj/F");
 	//    short int sweep=0;
 	//int run=0;
 	vector<double> dark_count;
@@ -194,16 +210,22 @@ int main(int argc, char *argv[]){
 		tree->SetBranchAddress("windowratio",&windowRatio);
 		tree->SetBranchAddress("baselinerms",&baselinerms);
 		tree->SetBranchAddress("sweep",&sweep);
+		tree->SetBranchAddress("bigstep",&bigstep);
 		//tree->SetBranchAddress("triggerpulseHeight",&triggerpulseHeight);
 		//tree->SetBranchAddress("triggerpulseWidth",&triggerpulseWidth);
 		//tree->SetBranchAddress("triggerpulsePeakTime",&triggerpulsePeakTime);
 		cout<<" processing root file No. "<<i<<endl;
 
 		int nument = tree->GetEntries();
-
+		std::vector<double> mycharge_frac(1,0);
+		if(event_tree_enable){
+			int numevts = event_tree->GetEntries();
+			if(use_frac) mycharge_frac.resize(numevts,0);
+		}
 		for (int j=0;j<nument;j++){
 			tree->GetEntry(j);
-			pulse->Fill(pulseHeight,pulseRightEdge,pulseLeftEdge,pulseCharge,pulsePeakTime,CalibratedTime,baselinerms,windowRatio,i,sweep);
+			pulse->Fill(pulseHeight,pulseRightEdge,pulseLeftEdge,pulseCharge,pulsePeakTime,CalibratedTime,baselinerms,windowRatio,i,sweep,bigstep);
+			if(use_frac && pulsePeakTime>frac_start && pulsePeakTime<(frac_start+frac_time)) mycharge_frac[sweep]+=pulseCharge;
 			//cout<<" This is root file : "<<i<<" we are reading entry : "<<j<<" with pulseHeight : "<<pulseHeight<<endl;
 		}
 		if (event_tree_enable){
@@ -220,7 +242,8 @@ int main(int argc, char *argv[]){
 			int numevts = event_tree->GetEntries();
 			for (int j =0;j<event_tree->GetEntries();j++){
 				event_tree->GetEntry(j);
-				event->Fill(charge,charge_frac,baseline,rms,npeaks);
+				if(use_frac) mycharge_fracj = mycharge_frac[j];
+				event->Fill();
 				double sweeptime = nos;
 				double tempnpeaks = npeaks;
 				if(trig_pmt){tempnpeaks -= 1; sweeptime -= firstTime;}
@@ -242,7 +265,7 @@ int main(int argc, char *argv[]){
 	for (int h=0;h<dark_count.size();h++){
 	  double temp_dark_rate = dark_count[h]*1E8;
 		double temp_dark_rate_error = dark_count_error[h]*1E8;
-		if(temp_dark_rate<0){ 
+		if(temp_dark_rate<0){
 		  backcount++;
 		  continue;
 		}
