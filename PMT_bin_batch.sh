@@ -15,10 +15,12 @@ trig=-1
 invert=-1
 win=-1
 usebase=-1
+
 it=-1
 outname="PMT_Trigger.root"
 shift 3
 TEMP=`getopt -o i:b:b:p:T:o: --long pmt,tri,sit:,win:,bfile: -n 'PMT_bin_batch.sh' -- "$@"`
+
 eval set -- "$TEMP"
 while true; do
 	case "$1" in
@@ -42,8 +44,9 @@ while true; do
 			echo "Using channel ${trig} as trigger"
 			shift 2
 			;;
-	    -o )
-		    outname="${2}.root"
+
+	  -o )
+		  outname="${2}.root"
 			echo "Using output name ${outname}"
 			shift 2
 			;;
@@ -80,7 +83,8 @@ done
 
 for j in `seq ${init} ${num}`
 do
- cmdarr=(./DDC10_bin_data_readout -wd ${dirname} -i ${j}.bin -o ${j}_${outname} -wform ${wformchan} -e )
+ cmdarr=(./DDC10_bin_data_readout -wd ${dirname} -i ${j}.bin -o ${j}_${outname} -wform ${wformchan} -e)
+
 
  if [ "${bsam}" -ne -1 ]; then
   cmdarr+=(-bs ${bsam})

@@ -87,6 +87,9 @@ vector<double> windowratio;
 vector<double> pulsebaseline_rms;
 vector<short int> event_n;
 vector<float> npeaks;
+vector<double> triggerHeight;
+vector<double> triggerPosition;
+vector<double> triggerWidth;
 
 vector<double> event_charge;
 vector<double> event_charge_ten;
@@ -218,6 +221,11 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
                 if (i<300)
                     temp_ten_charge += SimpsIntegral(v,b,left,right)/resistance;
             }
+	    else{
+		triggerHeight.push_back(max);
+		triggerPosition.push_back(temp_peak);
+		triggerWidth.push_back(right-left);
+	    }
 
             pulse_left_edge.push_back(left);
             pulse_right_edge.push_back(right);
@@ -460,7 +468,7 @@ int main(int argc, char *argv[]){
     //dark_hits->SetBit(TH1::kCanRebin);
 
     //Create Ntuple to store properties of pulses found by pulse finder
-    TNtuple *pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:sweep");
+    TNtuple *pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:sweep:triggerpulseHeight:triggerpulseWidth:triggerpulsePeakTime");
     TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms:npulses");
 	TTree *wforms_tree = new TTree("waveforms","Waveform Tree");
 	float waveforms[8192];
@@ -588,7 +596,7 @@ int main(int argc, char *argv[]){
     //Fill Ntuple
     //pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime
     for (int i=0;i<amplitude.size();i++){
-      pulse->Fill(amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],pulsebaseline_rms[i],windowratio[i],(float)event_n[i]);
+      pulse->Fill(amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],pulsebaseline_rms[i],windowratio[i],(float)event_n[i],triggerHeight[i],triggerWidth[i],triggerPosition[i]);
     }
     TGraph* baseline_plot = new TGraph();
     for (int i=0;i<baseline_sweep.size();i++){
