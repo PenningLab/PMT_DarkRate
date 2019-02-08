@@ -156,9 +156,6 @@ int main(int argc, char *argv[]){
 	vector<double> dark_count;
 	vector<double> dark_count_error;
 
-	vector<double> dark_count2;
-	vector<double> dark_count2_error;
-
 	vector<double> rtd1;
 	vector<double> rtd2;
 	vector<double> rtd3;
@@ -234,34 +231,20 @@ int main(int argc, char *argv[]){
 			event_tree->SetBranchAddress("baseline",&baseline);
 			event_tree->SetBranchAddress("rms",&rms);
 			event_tree->SetBranchAddress("npulses",&npeaks);
-			if(trig_pmt) event_tree->SetBranchAddress("firstPulse",&firstTime);
-			dark_count2.push_back(0);
-			dark_count2_error.push_back(0);
-			double temp_count = 0;
-			double temp_count_err = 0;
+
 			int numevts = event_tree->GetEntries();
 			for (int j =0;j<event_tree->GetEntries();j++){
 				event_tree->GetEntry(j);
 				if(use_frac) mycharge_fracj = mycharge_frac[j];
 				event->Fill();
-				double sweeptime = nos;
-				double tempnpeaks = npeaks;
-				if(trig_pmt){tempnpeaks -= 1; sweeptime -= firstTime;}
-				temp_count += tempnpeaks/sweeptime;
-				temp_count_err += tempnpeaks*tempnpeaks/(sweeptime*sweeptime);
 			}
-			temp_count /= (double)numevts;
-			temp_count_err /= (double)(numevts*numevts);
-			dark_count2.back() = temp_count;
-			dark_count2_error.back() = sqrt(temp_count_err - temp_count*temp_count);///(double)numevts;
 		}
 		fin->Close();
 	}//main for loop
 	fout->cd();
 
 	TGraphErrors* dark_plot = new TGraphErrors();
-	TGraphErrors* dark_plot2 = new TGraphErrors();
-	int backcount=0;
+	int backcount =0;
 	for (int h=0;h<dark_count.size();h++){
 	  double temp_dark_rate = dark_count[h]*1E8;
 		double temp_dark_rate_error = dark_count_error[h]*1E8;
@@ -271,18 +254,6 @@ int main(int argc, char *argv[]){
 		}
 		dark_plot->SetPoint(h-backcount,h,temp_dark_rate);
 		dark_plot->SetPointError(h-backcount,0,temp_dark_rate_error);
-	}
-
-	if(event_tree_enable){
-		for (int h=0;h<dark_count2.size();h++){
-			double temp_dark_rate = dark_count2[h]*1E8;
-			double temp_dark_rate_error = dark_count2_error[h]*1E8;
-			dark_plot2->SetPoint(h,h,temp_dark_rate);
-			dark_plot2->SetPointError(h,0,temp_dark_rate_error);
-		}
-		dark_plot2->SetName("dark_plotall");
-		dark_plot2->SetTitle(";Run (100s);Dark Rate (Hz)");
-		dark_plot2->Write();
 	}
 
 	if(use_temp){

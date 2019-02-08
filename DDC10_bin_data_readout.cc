@@ -53,7 +53,15 @@ using namespace std;
 ifstream fin;
 bool signal_start = false;
 bool debug_mode = false;
+
 bool lim_sams = false;
+
+bool smoothing = false;
+bool rolling = false;
+bool triangle = false;
+bool boxsmoothing = false;
+bool use_basefile = false;
+
 //define pulse finding parameters
 double pulseThresh = 8.0 ;
 double tpulseThresh = 8.0 ;
@@ -65,6 +73,10 @@ double number_of_peaks = 0.0;
 int adc_per_Volt = 8192;
 double resistance = 0.005;
 int baseline_samples_set = 160;
+int MovingWindowSize;
+int iteration = 0.0;
+int pth = 5.0;
+
 
 //vector<int> run_info;
 vector<float> raw_waveform;
@@ -83,15 +95,22 @@ vector<double> amplitude_position;
 vector<double> pl;
 vector<double> pr;
 vector<float> npeaks;
+
 vector<double> biggeststep;
+vector<float> smoothingv;
+
 //vector<double> trigger_time;
 vector<double> CalibratedTime;
 vector<double> windowratio;
 vector<double> pulsebaseline_rms;
 vector<short int> event_n;
+
+vector<double> smoothedBaseLine;
+
 vector<double> triggerHeight;
 vector<double> triggerPosition;
 vector<double> triggerWidth;
+
 
 vector<double> event_charge;
 vector<double> event_charge_ten;
@@ -136,21 +155,27 @@ double SimpsIntegral(const vector<float>& samples, double baseline,int start, in
 
 // Pulse Finding
 void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bool trig=false){
-    double pThresh = (trig ? tpulseThresh : pulseThresh) * rms * windowSize;
-    double eThresh = edgeThresh * rms * windowSize;
+
+  double pThresh = (trig ? tpulseThresh : pulseThresh) * rms * windowSize;
+  double eThresh = edgeThresh * rms * windowSize;
+
 	double temp_charge = 0;
     double temp_ten_charge = 0;
+    double pulse_height_thresh = pth*rms;
     //cout<<" vector size is : "<<v.size()<<endl;
     //getchar();
     //Let's looking for the Pulses
-    for (int i=0;i<nos;i++){
+    for (int i=0;i<v.size();i++){
         double integral = SimpsIntegral(v,b,i,i+windowSize);
         int left = 0;
         int right = 0;
         int temp_peak = 0;
         double temp_startv = 0;
         double temp_endv = 0;
+
 		double temp_bigstep = 0;
+        double temp_charge = 0;
+
 
         if (integral > pThresh){
             if (debug_mode){
@@ -221,6 +246,24 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
 			double dratio = SimpsIntegral(v,b,nleft,nright)/( ( (nwidth+1)/width )*SimpsIntegral(v,b,left,right) );
 
             //cout<<" Peak is : "<<temp_peak<<" max is : "<<max<<endl;
+
+            //if (temp_peak>0 &&temp_peak<8000){
+            //if (thischarge<1.0)
+			if(trig) break;
+
+            //}
+            //cout<<" This is sample : "<<i<<" Charge integral is : "<<SimpsIntegral(v,b,left,right)<<endl;
+
+            if (SimpsIntegral(v,b,left,right) <= eThresh){
+                i = right -1;
+                continue;
+            }
+            i = right;
+
+            if (max < pulse_height_thresh)
+                continue;
+
+            number_of_peaks ++;
             if (signal_start){
                 amplitude.push_back(max);
                 amplitude_position.push_back(temp_peak);
@@ -247,19 +290,6 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
             pulse_left_edge.push_back(left);
             pulse_right_edge.push_back(right);
 
-            //if (temp_peak>0 &&temp_peak<8000){
-            //if (thischarge<1.0)
-			if(trig) break;
-		    number_of_peaks ++;
-		    if(number_of_peaks==1) event_time.push_back(pulse_right_edge[0]);
-            //}
-            //cout<<" This is sample : "<<i<<" Charge integral is : "<<SimpsIntegral(v,b,left,right)<<endl;
-
-            if (SimpsIntegral(v,b,left,right) <= eThresh){
-                i = right -1;
-                continue;
-            }
-            i = right;
         }//if statement
 
     }
@@ -278,16 +308,21 @@ double baseline_rms(vector<double> &v, vector<float> &sample,double *irms){
     for (int k=0;k<v.size();k++){
 	       baseline_samples += v[k];
     }
-
+    //if (signal_start&&debug_mode)
+    //    cout<<" baseline_samples is  : "<<baseline_samples<<endl;
     baseline_samples /= v.size();
     for (int i=0;i<v.size();i++){
-        //if (signal_start&&debug_mode)
-        //    cout<<" baseline sample is  : "<<v[i]<<endl;
+    //    if (signal_start&&debug_mode)
+    //        cout<<" baseline sample is  : "<<v[i]<<endl;
         rms += pow(v[i] - baseline_samples,2);
     }
     rms = sqrt(rms / v.size());
-    //if (signal_start&&debug_mode){
-    //    cout<<" rms is : "<<rms<<" baseline is : "<<baseline_samples<<endl;
+    if (signal_start&&debug_mode){
+        cout<<" rms is : "<<rms<<" baseline is : "<<baseline_samples<<endl;
+        getchar();
+    }
+    if (smoothing || !use_basefile)
+        extract_event(sample,baseline_samples,rms,sample.size(),0,false);
 
     //}
 	irms[0] = rms;
@@ -338,6 +373,136 @@ int calcnumchannels(int mask){
 	}
 	return numchans;
 }
+vector<float> Smoothen(vector<float> &v){
+    vector<float> smoothv;
+
+    double sum = 0.0;
+    double movingAverage = 0.0;
+    int WidthSample = 5;
+    int rollingSum = 0.0;
+
+    if (boxsmoothing){// boxcar smoothing
+        for (int it=0;it<iteration;it++){//how many passes
+            if (it<1){
+                for (int i=0 ; i<v.size();i++){
+                    sum = 0.0;
+                    movingAverage = 0.0;
+                    if (i<(MovingWindowSize-1)/2){
+                        smoothv.push_back(v[i]);
+                    }
+                    else if (i>=(MovingWindowSize-1)/2 && i<(v.size()-MovingWindowSize)){
+                        for (int j=(i-(MovingWindowSize-1)/2);j<=(i+(MovingWindowSize-1)/2);++j){
+                            sum += v[j];
+                        }
+                        movingAverage = sum / MovingWindowSize;
+                        smoothv.push_back(movingAverage);
+                    }
+                    else if (i>=(v.size()-MovingWindowSize)){
+                        smoothv.push_back(v[i]);
+                    }
+
+
+                }
+            }
+            else {
+                for (int i=0 ; i<smoothv.size();i++){
+                    sum = 0.0;
+                    movingAverage = 0.0;
+                    if (i>=(MovingWindowSize-1)/2 && i<(v.size()-MovingWindowSize)){
+                        for (int j=(i-(MovingWindowSize-1)/2);j<=(i+(MovingWindowSize-1)/2);++j){
+                            sum += v[j];
+                        }
+                        movingAverage = sum / MovingWindowSize;
+                        smoothv[i] = movingAverage;
+                    }
+
+
+                }
+            }
+        }
+        for (int i=0;i<baseline_samples_set;i++){
+            smoothedBaseLine.push_back(smoothv[i]);
+        }
+    }
+    if (triangle){//triangular smoothing which preserves area under peaks ( 3 points)
+        for (int it=0;it<iteration;it++){//how many passes
+            if (it<1){
+                for (int i=0 ; i<v.size();i++){
+                    sum = 0.0;
+                    movingAverage = 0.0;
+                    if (i<(MovingWindowSize-1)/2){
+                        smoothv.push_back(v[i]);
+                    }
+                    else if (i>=(MovingWindowSize-1)/2 && i<(v.size()-MovingWindowSize)){
+                        for (int j=(i-(MovingWindowSize-1)/2);j<=(i+(MovingWindowSize-1)/2);++j){
+                            if (j==(i-(MovingWindowSize-1)/2) || j==(i+(MovingWindowSize-1)/2)){
+                                sum += v[j];
+                            }
+                            if (j==i){
+                                sum += 2*v[j];
+                            }
+
+                        }
+                        movingAverage = sum / 4;
+                        smoothv.push_back(movingAverage);
+                    }
+                    else if (i>=(v.size()-MovingWindowSize)){
+                        smoothv.push_back(v[i]);
+                    }
+
+
+                }
+            }
+            else {
+                for (int i=0 ; i<smoothv.size();i++){
+                    sum = 0.0;
+                    movingAverage = 0.0;
+                    if (i>=(MovingWindowSize-1)/2 && i<(v.size()-MovingWindowSize)){
+                        for (int j=(i-(MovingWindowSize-1)/2);j<=(i+(MovingWindowSize-1)/2);++j){
+                            if (j==(i-(MovingWindowSize-1)/2) || j==(i+(MovingWindowSize-1)/2)){
+                                sum += smoothv[j];
+                            }
+                            if (j==i){
+                                sum += 2*smoothv[j];
+                            }
+
+                        }
+                        movingAverage = sum / 4;
+                        smoothv[i] = movingAverage;
+                    }
+
+
+                }
+            }
+        }
+        for (int i=0;i<baseline_samples_set;i++){
+            smoothedBaseLine.push_back(smoothv[i]);
+        }
+    }
+    if (rolling){
+        smoothv.resize(8000,0);
+        for (int n=0;n<WidthSample;n++){
+            rollingSum += v[n];
+        }
+        for (int n=0; n<WidthSample; n++){
+            smoothv[n] = rollingSum/WidthSample;
+        }
+        for (int n=WidthSample;n<v.size();n++){
+            rollingSum +=v[n];
+            rollingSum -=v[n-WidthSample];
+            smoothv[n-WidthSample/2] = rollingSum/WidthSample;
+        }
+        for (int n=v.size()-WidthSample/2;n<v.size();n++){
+            smoothv[n] = smoothv[v.size()-WidthSample/2-1];
+        }
+        for (int i=0;i<baseline_samples_set;i++){
+            smoothedBaseLine.push_back(smoothv[i]);
+        }
+    }
+    if (debug_mode)
+        cout<<" Smooth vector has elements : "<<smoothv.size()<<endl;
+    return smoothv;
+}
 
 
 static void show_usage(string name){
@@ -350,8 +515,9 @@ static void show_usage(string name){
 	<<" -invert: invert waveform\n"
 	<<" -trigger : invert trigger pulse \n"
 	<<" -pt : pulse threshold\n"
-	<<" -e : write event tree\n"
+	<<" -tri : Traiangle smoothing enabled\n"
     <<" -debug : Get in the debugging mode.\n"
+    <<" -sit : number of smoothing interation\n"
     <<" -h or --help : Show the usage\n"
     <<" Enjoy ! -Ryan Wang"<<endl;
 }
@@ -364,7 +530,6 @@ int main(int argc, char *argv[]){
 	bool use_trigger = false;
     bool trigger_inversion = false;
 	bool invert_waveform = false;
-	bool use_basefile = false;
 
 	int num_sams = 0;
 	int trig_channel;
@@ -421,6 +586,27 @@ int main(int argc, char *argv[]){
 		}
         else if (arg=="-debug"){
             debug_mode = true;
+        }
+        else if (arg=="-s"){
+            smoothing = true;
+        }
+        else if (arg=="-box"){
+            boxsmoothing = true;
+            smoothing = true;
+        }
+        else if (arg=="-mwin"){
+            MovingWindowSize = atoi(argv[i+1]);
+        }
+        else if (arg=="-roll"){
+            rolling = true;
+            smoothing = true;
+        }
+        else if (arg=="-tri"){
+            triangle = true;
+            smoothing = true;
+        }
+        else if (arg=="-sit"){
+            iteration = atoi(argv[i+1]);
         }
     }
 
@@ -495,6 +681,7 @@ int main(int argc, char *argv[]){
     TGraph* t22;
     TGraph* t33;
     TGraph* t44;
+    TGraph* t55;
 
     //char linea[200];// temp char for line in the file
     //TString* buff=new TString();
@@ -575,8 +762,22 @@ int main(int argc, char *argv[]){
 		wforms_tree->Fill();
 		number_of_peaks = 0.0;
 		double thisbase = (use_basefile ? fixedrms : 0);
-		rms_value = (use_basefile ? fixedbase : baseline_rms(baselinev,raw_waveform,&thisbase));
-		extract_event(raw_waveform,rms_value,thisbase,(lim_sams ? num_sams : number_of_samples),(use_trigger ? trigger_t : 0));
+
+		if (smoothing){
+			smoothingv.clear();
+			smoothingv = Smoothen(raw_waveform);
+			rms_value = (use_basefile ? fixedbase : baseline_rms(smoothedBaseLine,smoothingv,thisbase));
+		}
+		else {
+			rms_value = (use_basefile ? fixedbase : baseline_rms(baselinev,raw_waveform,thisbase));
+			extract_event(raw_waveform,rms_value,thisbase,number_of_samples,(use_trigger ? trigger_t : 0));
+  		}
+
+    if (debug_mode){
+      cout<<" basline is  : "<<rms_value<<" rms is : "<<thisbase<<endl;
+      getchar();
+    }
+
 		event_baseline.push_back(rms_value);
 		event_rms.push_back(thisbase);
 		//event_time.push_back(number_of_samples);
@@ -589,12 +790,18 @@ int main(int argc, char *argv[]){
 			t11 = new TGraph();
 			t22 = new TGraph();
 			t33 = new TGraph();
+            t55 = new TGraph();
 			for (int j=0;j<pulse_left_edge.size();j++){
             	t22->SetPoint(j,pulse_left_edge[j],startv[j]);
                 t33->SetPoint(j,pulse_right_edge[j],endv[j]);
             }
 			for (int sam=0;sam<number_of_samples;sam++){
 				t11->SetPoint(sam,sam,raw_waveform[sam]);
+                if (smoothing){
+                    if (sam < smoothingv.size())
+                        t55->SetPoint(sam,sam,smoothingv[sam]);
+                }
+
 			}
 			char plotname [30];
 			sprintf(plotname,"waveform%d",sweep);
@@ -617,9 +824,11 @@ int main(int argc, char *argv[]){
             t33->SetMarkerColor(4);
             t33->SetMarkerStyle(3);
             t33->SetMarkerSize(3);
+            t55->SetLineColor(2);
             t11->Draw("alp");
             t22->Draw("p");
             t33->Draw("p");
+            t55->Draw("lp");
             line->Draw("");
 			line2->Draw("");
 			line3->Draw("");
@@ -647,7 +856,7 @@ int main(int argc, char *argv[]){
         baseline_plot->SetPoint(i,i,baseline_sweep[i]);
     }
     for (int i=0;i<event_charge.size();i++){
-      event->Fill(event_charge[i],event_charge_ten[i],event_baseline[i],event_rms[i],npeaks[i],event_time[i]);
+      event->Fill(event_charge[i],event_charge_ten[i],event_baseline[i],event_rms[i],npeaks[i]);
     }
 
     //Baseline plot
