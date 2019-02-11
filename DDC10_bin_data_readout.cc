@@ -766,10 +766,10 @@ int main(int argc, char *argv[]){
 		if (smoothing){
 			smoothingv.clear();
 			smoothingv = Smoothen(raw_waveform);
-			rms_value = (use_basefile ? fixedbase : baseline_rms(smoothedBaseLine,smoothingv,thisbase));
+			rms_value = (use_basefile ? fixedbase : baseline_rms(smoothedBaseLine,smoothingv,&thisbase));
 		}
 		else {
-			rms_value = (use_basefile ? fixedbase : baseline_rms(baselinev,raw_waveform,thisbase));
+			rms_value = (use_basefile ? fixedbase : baseline_rms(baselinev,raw_waveform,&thisbase));
 			extract_event(raw_waveform,rms_value,thisbase,number_of_samples,(use_trigger ? trigger_t : 0));
   		}
 
