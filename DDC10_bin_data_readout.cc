@@ -174,7 +174,6 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
         double temp_endv = 0;
 
 		double temp_bigstep = 0;
-        double temp_charge = 0;
 
 
         if (integral > pThresh){
@@ -224,8 +223,10 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
                 if (s > max){
                     max = s;
                     temp_peak = j;
+
+					if ( j>0 && (v[j]-v[j-1])>temp_bigstep) temp_bigstep = v[j] - v[j-1];
                 }
-				if ( (v[j+1]-v[j]) > temp_bigstep) temp_bigstep = v[j+1] - v[j];
+
             }
             if (right >nos)
                 continue;
@@ -713,7 +714,7 @@ int main(int argc, char *argv[]){
 	else
     	pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:sweep:bigstep");
 
-	TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms:npulses:firstPulse");
+	TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms:npulses");
 	TTree *wforms_tree = new TTree("waveforms","Waveform Tree");
 	float waveforms[8192];
 	float trigger_t;
