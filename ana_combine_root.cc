@@ -1,5 +1,6 @@
 /////////////////////////////////////////////////////////////////////////////////////////
-// To compile : g++ -I ${ROOTSYS}/include/ `root-config --cflags --libs` -I/opt/python3/include/python3.6m -l/opt/python3/lib/libpython3.6m.a -o ana_combine_root ana_combine_root.cc
+// To compile : g++ ana_combine_root.cc -o ana_combine_root -I${ROOTSYS}/include/ `root-config --cflags --libs` `python3.6m-config --cflags --ldflags`
+// Requires an install of python 3.6, point to your location for python3.6m-config
 // To execute (help infomation gives detail utility) : ./DDC10_data_readout -h
 /* Revision log :
  *
