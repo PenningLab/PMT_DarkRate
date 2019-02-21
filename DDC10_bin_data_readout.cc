@@ -98,6 +98,15 @@ vector<float> npeaks;
 
 vector<double> biggeststep;
 vector<float> smoothingv;
+//lzap like params
+vector<double> pulse_length99;
+vector<double> pulse_length95;
+vector<double> pulse_length90;
+vector<double> pulse_length80;
+vector<double> pulse_length75;
+vector<double> pulse_length50;
+vector<double> pulse_length25;
+vector<double> pulse_length5;
 
 //vector<double> trigger_time;
 vector<double> CalibratedTime;
@@ -218,15 +227,32 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
             }
 
             double max = -1.0e9;
+			double totalq = SimpsIntegral(v,b,left,right);
+			double tempq5=0,tempq25=0,tempq50=0,tempq75=0,tempq80=0,tempq90=0,tempq95=0,tempq99=0;
             for (int j=left;j<right;j++){
                 double s = v[j] - b;
                 if (s > max){
                     max = s;
                     temp_peak = j;
-
 					if ( j>0 && (v[j]-v[j-1])>temp_bigstep) temp_bigstep = v[j] - v[j-1];
                 }
-
+				ratio = SimpsIntegral(v,b,left,j)/totalq;
+				if(ratio<=0.05 && tempq5<(j-left))
+					tempq5=j-left;
+				if(ratio<=0.25 && tempq25<(j-left))
+					tempq25=j-left;
+				if(ratio<=0.5 && tempq50<(j-left))
+					tempq50=j-left;
+				if(ratio<=0.75 && tempq75<(j-left))
+					tempq75=j-left;
+				if(ratio<=0.8 && tempq80<(j-left))
+					tempq80=j-left;
+				if(ratio<=0.9 && tempq90<(j-left))
+					tempq90=j-left;
+				if(ratio<=0.95 && tempq95<(j-left))
+					tempq95=j-left;
+				if(ratio<=0.99 && tempq99<(j-left))
+					tempq99=j-left;
             }
             if (right >nos)
                 continue;
@@ -278,6 +304,15 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
 				pulsebaseline_rms.push_back(rms);
 				event_n.push_back(current_sweep);
 				biggeststep.push_back(temp_bigstep);
+				pulse_length5.push_back(tempq5);
+				pulse_length25.push_back(tempq25);
+				pulse_length50.push_back(tempq50);
+				pulse_length75.push_back(tempq75);
+				pulse_length80.push_back(tempq80);
+				pulse_length90.push_back(tempq90);
+				pulse_length95.push_back(tempq95);
+				pulse_length99.push_back(tempq99);
+
 				temp_charge +=SimpsIntegral(v,b,left,right)/resistance;
                 if (i<300)
                     temp_ten_charge += SimpsIntegral(v,b,left,right)/resistance;
@@ -710,9 +745,9 @@ int main(int argc, char *argv[]){
     //Create Ntuple to store properties of pulses found by pulse finder
     TNtuple *pulse;
 	if(use_trigger)
-	 	pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:sweep:bigstep:triggerpulseHeight:triggerpulseWidth:triggerpulsePeakTime");
+	 	pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:sweep:bigstep:pulseLength5:pulseLength25:pulseLength50:pulseLength75:pulseLength80:pulseLength90:pulseLength95:pulseLength99:triggerpulseHeight:triggerpulseWidth:triggerpulsePeakTime");
 	else
-    	pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:sweep:bigstep");
+    	pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:sweep:bigstep:pulseLength5:pulseLength25:pulseLength50:pulseLength75:pulseLength80:pulseLength90:pulseLength95:pulseLength99");
 
 	TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms:npulses");
 	TTree *wforms_tree = new TTree("waveforms","Waveform Tree");
@@ -848,8 +883,8 @@ int main(int argc, char *argv[]){
     //pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime
     cout<<" before tree fill !"<<endl;
     for (int i=0;i<amplitude.size();i++){
-      if(use_trigger) pulse->Fill(amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],pulsebaseline_rms[i],windowratio[i],(float)event_n[i],biggeststep[i],triggerHeight[i],triggerWidth[i],triggerPosition[i]);
-      else pulse->Fill(amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],pulsebaseline_rms[i],windowratio[i],(float)event_n[i],biggeststep[i]);
+      if(use_trigger) pulse->Fill(amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],pulsebaseline_rms[i],windowratio[i],(float)event_n[i],biggeststep[i],pulse_length5[i],pulse_length25[i],pulse_length50[i],pulse_length75[i],pulse_length80[i],pulse_length90[i],pulse_length95[i],pulse_length99[i],triggerHeight[i],triggerWidth[i],triggerPosition[i]);
+      else pulse->Fill(amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],pulsebaseline_rms[i],windowratio[i],(float)event_n[i],biggeststep[i],pulse_length5[i],pulse_length25[i],pulse_length50[i],pulse_length75[i],pulse_length80[i],pulse_length90[i],pulse_length95[i],pulse_length99[i]);
     }
     cout<<" after tree fill ! "<<endl;
     TGraph* baseline_plot = new TGraph();

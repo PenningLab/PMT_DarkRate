@@ -72,6 +72,7 @@ while true; do
 			nsamps=$2
 			echo "Only analysing first ${nsamps} samples"
 			shift
+			;;
 		--sit )
 			it=$2
 			echo "using baseline file ${base_filename}"

@@ -1,5 +1,5 @@
 /////////////////////////////////////////////////////////////////////////////////////////
-// To compile : g++ -I /usr/common/usg/software/ROOT/5.34.20/include/ `root-config --cflags --libs` -o DDC10_data_readout DDC10_data_readout.cc
+// To compile : g++ -I ${ROOTSYS}/include/ `root-config --cflags --libs` -I/opt/python3/include/python3.6m -l/opt/python3/lib/libpython3.6m.a -o ana_combine_root ana_combine_root.cc
 // To execute (help infomation gives detail utility) : ./DDC10_data_readout -h
 /* Revision log :
  *
@@ -24,6 +24,9 @@
 #include <fstream>      // std::ifstream
 #include <time.h>
 #include <numeric>
+
+#include <Python.h>
+
 #include <TMatrixDSymEigen.h>
 //#include <libRATEvent.so>
 #include <TVector3.h>
@@ -48,6 +51,7 @@
 #include <TVectorD.h>
 #include <TMatrix.h>
 #include <TH2Poly.h>
+
 //#include <boost/date_time.hpp>
 using namespace std;
 static void show_usage(string name){
@@ -64,19 +68,21 @@ static void show_usage(string name){
 	<<" Enjoy ! -Ryan Wang"<<endl;
 }
 int main(int argc, char *argv[]){
-	string filename;
-	string outfilename;
-	string working_dir;
-	string out_dir = "";
+	std::string filename;
+	std::string outfilename;
+	std::string working_dir;
+	std::string out_dir = "";
 	int number_of_files = 0;
 	bool event_tree_enable = false;
 	bool use_temp = false;
 	bool trig_pmt = false;
 	bool use_frac = false;
+	bool calcrate = false;
 	int frac_time = 0;
 	int frac_start = 0;
 	float charge_threshold = -1;
 	double num_sweeps=-1;
+	std::string pydir;
 	int initial_run = 0;
 	if (argc<2){
 		show_usage(argv[0]);
@@ -124,25 +130,89 @@ int main(int argc, char *argv[]){
 			frac_time = atof(argv[i+1]);
 			frac_start = atof(argv[i+2]);
 		}
+		else if (arg=="-rate"){
+			calcrate = true;
+			pydir = argv[i+1];
+			//pydir.append("/readlogs.py");
+		}
 
 	}
 	if (out_dir=="") out_dir = working_dir;
-	ifstream temp_file;
+	std::ifstream temp_file;
 	if (use_temp){
 		char in_temp[320];
 		sprintf(in_temp,"%s/%s",working_dir.c_str(),"temptimes.txt");
 		temp_file.open(in_temp,std::ifstream::in);
 	}
+
+	double myrate = 0;
+	if(calcrate){
+		std::cout<<"Initializing python"<<std::endl;
+		Py_Initialize();
+		std::cout<<"Updating syspath with pydir: "<<pydir<<std::endl;
+		PyObject* sysPath = PySys_GetObject("path");
+		PyList_Append(sysPath, PyUnicode_FromFormat("%s",pydir.c_str()));
+
+		std::cout<<"Loading module"<<std::endl;
+
+		//Load module
+		PyObject *pName = PyUnicode_FromString("readlogs");
+		PyObject *pModule = PyImport_Import(pName);
+		Py_DECREF(pName);
+		if (pModule != NULL){
+			std::cout << "Py Module Found" << std::endl;
+
+			// Get function from module
+			PyObject *pFunc = PyObject_GetAttrString(pModule,"calcrates");
+			if(pFunc && PyCallable_Check(pFunc)){
+				PyObject* pargs = PyTuple_New(2);
+				PyObject* pval;
+				pval =  PyUnicode_FromFormat("%s",working_dir.c_str());
+				PyTuple_SetItem(pargs,0,pval);
+				pval = PyLong_FromLong(number_of_files);
+				PyTuple_SetItem(pargs,1,pval);
+
+				PyObject* myresult = PyObject_CallObject(pFunc,pargs);
+				Py_DECREF(pargs);
+				Py_DECREF(pval);
+				if(myresult != NULL){
+					myrate = PyFloat_AsDouble(myresult);
+					std::cout<<"Rate is "<<myrate<<std::endl;
+				}
+				else{
+					Py_DECREF(pFunc);
+					Py_DECREF(pModule);
+					PyErr_Print();
+					std::cout<<"Failed to get result"<<std::endl;
+				}
+
+			}
+			else{
+				if (PyErr_Occurred())
+                	PyErr_Print();
+				std::cout<<"Couldn't find calcrates"<<std::endl;
+			}
+			Py_XDECREF(pFunc);
+        	Py_DECREF(pModule);
+		}
+		else{
+			PyErr_Print();
+			std::cout<<"Failed to load module"<<std::endl;
+		}
+		Py_FinalizeEx();
+	}
+
 	char out_path [320];
 	sprintf(out_path,"%s/%s",out_dir.c_str(),outfilename.c_str());
-	cout<<"Creating output file"<<endl;
+	cout<<"\nCreating output file"<<endl;
 	TFile *fout = new TFile(out_path,"RECREATE");
-	TNtuple *pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:Run:sweep:bigstep:triggerpulseHeight:triggerpulseWidth:triggerpulsePeakTime");
+	TNtuple *pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:Run:sweep:bigstep:pulseLength5:pulseLength25:pulseLength50:pulseLength75:pulseLength80:pulseLength90:pulseLength95:pulseLength99:triggerpulseHeight:triggerpulseWidth:triggerpulsePeakTime");
 	//TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms:npulses");
 
 	//}
+
 	// variables
-	float pulseHeight=0,pulseRightEdge=0,pulseLeftEdge=0,pulseCharge=0,pulsePeakTime=0,CalibratedTime=0,windowRatio=0,baselinerms=0,sweep=0,bigstep=0;
+	float pulseHeight=0,pulseRightEdge=0,pulseLeftEdge=0,pulseCharge=0,pulsePeakTime=0,CalibratedTime=0,windowRatio=0,baselinerms=0,sweep=0,bigstep=0,plen5=0,pl25=0,pl50=0,pl75=0,pl80=0,pl90=0,pl95=0,pl99=0;
 	float charge=0,charge_frac=0,baseline=0,rms=0,npeaks=0,firstTime=0,triggerpulseHeight=0,triggerpulseWidth=0,triggerpulsePeakTime=0,mycharge_fracj=0;
 	TTree *event = new TTree("event","event");
 	event->Branch("charge",&charge,"charge/F");
@@ -208,6 +278,14 @@ int main(int argc, char *argv[]){
 		tree->SetBranchAddress("baselinerms",&baselinerms);
 		tree->SetBranchAddress("sweep",&sweep);
 		tree->SetBranchAddress("bigstep",&bigstep);
+		tree->SetBranchAddress("pulseLength5",&pl5);
+		tree->SetBranchAddress("pulseLength25",&pl25);
+		tree->SetBranchAddress("pulseLength50",&pl50);
+		tree->SetBranchAddress("pulseLength75",&pl75);
+		tree->SetBranchAddress("pulseLength80",&pl80);
+		tree->SetBranchAddress("pulseLength90",&pl90);
+		tree->SetBranchAddress("pulseLength95",&pl95);
+		tree->SetBranchAddress("pulseLength99",&pl99);
 		//tree->SetBranchAddress("triggerpulseHeight",&triggerpulseHeight);
 		//tree->SetBranchAddress("triggerpulseWidth",&triggerpulseWidth);
 		//tree->SetBranchAddress("triggerpulsePeakTime",&triggerpulsePeakTime);
@@ -221,7 +299,7 @@ int main(int argc, char *argv[]){
 		}
 		for (int j=0;j<nument;j++){
 			tree->GetEntry(j);
-			pulse->Fill(pulseHeight,pulseRightEdge,pulseLeftEdge,pulseCharge,pulsePeakTime,CalibratedTime,baselinerms,windowRatio,i,sweep,bigstep);
+			pulse->Fill(pulseHeight,pulseRightEdge,pulseLeftEdge,pulseCharge,pulsePeakTime,CalibratedTime,baselinerms,windowRatio,i,sweep,bigstep,pl5,pl25,pl50,pl75,pl80,pl90,pl95);
 			if(use_frac && pulsePeakTime>frac_start && pulsePeakTime<(frac_start+frac_time)) mycharge_frac[sweep]+=pulseCharge;
 			//cout<<" This is root file : "<<i<<" we are reading entry : "<<j<<" with pulseHeight : "<<pulseHeight<<endl;
 		}
@@ -299,6 +377,10 @@ int main(int argc, char *argv[]){
 	dark_plot->SetMarkerStyle(24);
 	dark_plot->SetMarkerColor(2);
 	dark_plot->Draw("AP");
+
+	TVectorD mrate(1);
+	mrate[0] = myrate;
+	mrate.Write("Rate");
 
 	dark_plot->Write();
 	cdark->Write();
