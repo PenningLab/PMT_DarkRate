@@ -1,5 +1,5 @@
 /////////////////////////////////////////////////////////////////////////////////////////
-// To compile : g++ -I /usr/common/usg/software/ROOT/5.34.20/include/ `root-config --cflags --libs` -o DDC10_data_readout DDC10_data_readout.cc
+// To compile : g++ -I${ROOTSYS}/include/ `root-config --cflags --libs` -o DDC10_bin_data_readout DDC10_bin_data_readout.cc
 // To execute (help infomation gives detail utility) : ./DDC10_data_readout -h
 /* Revision log :
  *
@@ -236,7 +236,7 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
                     temp_peak = j;
 					if ( j>0 && (v[j]-v[j-1])>temp_bigstep) temp_bigstep = v[j] - v[j-1];
                 }
-				ratio = SimpsIntegral(v,b,left,j)/totalq;
+				double ratio = SimpsIntegral(v,b,left,j)/totalq;
 				if(ratio<=0.05 && tempq5<(j-left))
 					tempq5=j-left;
 				if(ratio<=0.25 && tempq25<(j-left))
@@ -883,8 +883,16 @@ int main(int argc, char *argv[]){
     //pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime
     cout<<" before tree fill !"<<endl;
     for (int i=0;i<amplitude.size();i++){
-      if(use_trigger) pulse->Fill(amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],pulsebaseline_rms[i],windowratio[i],(float)event_n[i],biggeststep[i],pulse_length5[i],pulse_length25[i],pulse_length50[i],pulse_length75[i],pulse_length80[i],pulse_length90[i],pulse_length95[i],pulse_length99[i],triggerHeight[i],triggerWidth[i],triggerPosition[i]);
-      else pulse->Fill(amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],pulsebaseline_rms[i],windowratio[i],(float)event_n[i],biggeststep[i],pulse_length5[i],pulse_length25[i],pulse_length50[i],pulse_length75[i],pulse_length80[i],pulse_length90[i],pulse_length95[i],pulse_length99[i]);
+      if(use_trigger){
+		  float mtinput = {amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],pulsebaseline_rms[i],windowratio[i],(float)event_n[i],biggeststep[i],pulse_length5[i],pulse_length25[i],pulse_length50[i],pulse_length75[i],pulse_length80[i],pulse_length90[i],pulse_length95[i],pulse_length99[i],triggerHeight[i],triggerWidth[i],triggerPosition[i]};
+		  float* mtinputpoint = mtinput;
+		  pulse->Fill(mtinputpoint);
+	  }
+      else{
+		  float mtinput = {amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],pulsebaseline_rms[i],windowratio[i],(float)event_n[i],biggeststep[i],pulse_length5[i],pulse_length25[i],pulse_length50[i],pulse_length75[i],pulse_length80[i],pulse_length90[i],pulse_length95[i],pulse_length99[i]};
+		  float* mtinputpoint = mtinput;
+		  pulse->Fill(mtinputpoint);
+	  }
     }
     cout<<" after tree fill ! "<<endl;
     TGraph* baseline_plot = new TGraph();
