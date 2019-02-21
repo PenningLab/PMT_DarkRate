@@ -213,7 +213,7 @@ int main(int argc, char *argv[]){
 	//}
 
 	// variables
-	float pulseHeight=0,pulseRightEdge=0,pulseLeftEdge=0,pulseCharge=0,pulsePeakTime=0,CalibratedTime=0,windowRatio=0,baselinerms=0,sweep=0,bigstep=0,plen5=0,pl25=0,pl50=0,pl75=0,pl80=0,pl90=0,pl95=0,pl99=0;
+	float pulseHeight=0,pulseRightEdge=0,pulseLeftEdge=0,pulseCharge=0,pulsePeakTime=0,CalibratedTime=0,windowRatio=0,baselinerms=0,sweep=0,bigstep=0,pl5=0,pl25=0,pl50=0,pl75=0,pl80=0,pl90=0,pl95=0,pl99=0;
 	float charge=0,charge_frac=0,baseline=0,rms=0,npeaks=0,firstTime=0,triggerpulseHeight=0,triggerpulseWidth=0,triggerpulsePeakTime=0,mycharge_fracj=0;
 	TTree *event = new TTree("event","event");
 	event->Branch("charge",&charge,"charge/F");
