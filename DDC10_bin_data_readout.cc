@@ -884,12 +884,12 @@ int main(int argc, char *argv[]){
     cout<<" before tree fill !"<<endl;
     for (int i=0;i<amplitude.size();i++){
       if(use_trigger){
-		  float mtinput = {amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],pulsebaseline_rms[i],windowratio[i],(float)event_n[i],biggeststep[i],pulse_length5[i],pulse_length25[i],pulse_length50[i],pulse_length75[i],pulse_length80[i],pulse_length90[i],pulse_length95[i],pulse_length99[i],triggerHeight[i],triggerWidth[i],triggerPosition[i]};
+		  float mtinput[] = {amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],pulsebaseline_rms[i],windowratio[i],(float)event_n[i],biggeststep[i],pulse_length5[i],pulse_length25[i],pulse_length50[i],pulse_length75[i],pulse_length80[i],pulse_length90[i],pulse_length95[i],pulse_length99[i],triggerHeight[i],triggerWidth[i],triggerPosition[i]};
 		  float* mtinputpoint = mtinput;
 		  pulse->Fill(mtinputpoint);
 	  }
       else{
-		  float mtinput = {amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],pulsebaseline_rms[i],windowratio[i],(float)event_n[i],biggeststep[i],pulse_length5[i],pulse_length25[i],pulse_length50[i],pulse_length75[i],pulse_length80[i],pulse_length90[i],pulse_length95[i],pulse_length99[i]};
+		  float mtinput[] = {amplitude[i],pr[i],pl[i],charge_v[i],amplitude_position[i],CalibratedTime[i],pulsebaseline_rms[i],windowratio[i],(float)event_n[i],biggeststep[i],pulse_length5[i],pulse_length25[i],pulse_length50[i],pulse_length75[i],pulse_length80[i],pulse_length90[i],pulse_length95[i],pulse_length99[i]};
 		  float* mtinputpoint = mtinput;
 		  pulse->Fill(mtinputpoint);
 	  }
