@@ -179,6 +179,7 @@ int main(int argc, char *argv[]){
 				if(myresult != NULL){
 					myrate = PyFloat_AsDouble(myresult);
 					std::cout<<"Rate is "<<myrate<<std::endl;
+					Py_DECREF(myresult);
 				}
 				else{
 					Py_DECREF(pFunc);
@@ -232,14 +233,13 @@ int main(int argc, char *argv[]){
 	vector<double> rtd3;
 	vector<double> rtd4;
 
-	std::vector<float> raw_waveforms;
-	TTree* tree,*wforms;
-	TTree* event_tree;
 	cout<<"start looping"<<endl;
 	for (int i=initial_run;i<number_of_files;i++){
 		char root_file_name [320];
 		sprintf(root_file_name,"%s/%u_%s",working_dir.c_str(),i,filename.c_str());
 		cout<<"Reading in file"<<endl;
+		TTree* tree;
+		TTree* event_tree;
 		TFile *fin = new TFile(root_file_name,"READ");
 		if (fin == NULL || fin->IsZombie()){
 			cout<<" File is corrupted ! "<<endl;
@@ -319,7 +319,9 @@ int main(int argc, char *argv[]){
 				if(use_frac) mycharge_fracj = mycharge_frac[j];
 				event->Fill();
 			}
+			delete event_tree;
 		}
+		delete tree;
 		fin->Close();
 	}//main for loop
 	fout->cd();
