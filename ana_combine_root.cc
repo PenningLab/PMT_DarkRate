@@ -180,6 +180,7 @@ int main(int argc, char *argv[]){
 					myrate = PyFloat_AsDouble(myresult);
 					std::cout<<"Rate is "<<myrate<<std::endl;
 					Py_DECREF(myresult);
+					std::cout<<"Completed pyrun, closing up"<<std::endl;
 				}
 				else{
 					Py_DECREF(pFunc);
@@ -201,7 +202,7 @@ int main(int argc, char *argv[]){
 			PyErr_Print();
 			std::cout<<"Failed to load module"<<std::endl;
 		}
-		int pyoutcheck = Py_Finalize();
+		int pyoutcheck = Py_FinalizeEx();
 		std::cout<<"closing out "<<pyoutcheck<<std::endl;
 	}
 
