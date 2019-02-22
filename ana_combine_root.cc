@@ -204,15 +204,16 @@ int main(int argc, char *argv[]){
 		Py_FinalizeEx();
 	}
 
+	std::cout<<"\nCreating output file"<<std::endl;
 	char out_path [320];
 	sprintf(out_path,"%s/%s",out_dir.c_str(),outfilename.c_str());
-	cout<<"\nCreating output file"<<endl;
+
 	TFile *fout = new TFile(out_path,"RECREATE");
 	TNtuple *pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:Run:sweep:bigstep:pulseLength5:pulseLength25:pulseLength50:pulseLength75:pulseLength80:pulseLength90:pulseLength95:pulseLength99:triggerpulseHeight:triggerpulseWidth:triggerpulsePeakTime");
 	//TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms:npulses");
 
 	//}
-
+	std::cout<<"creating output ntuple"<<std::endl;
 	// variables
 	float pulseHeight=0,pulseRightEdge=0,pulseLeftEdge=0,pulseCharge=0,pulsePeakTime=0,CalibratedTime=0,windowRatio=0,baselinerms=0,sweep=0,bigstep=0,pl5=0,pl25=0,pl50=0,pl75=0,pl80=0,pl90=0,pl95=0,pl99=0;
 	float charge=0,charge_frac=0,baseline=0,rms=0,npeaks=0,firstTime=0,triggerpulseHeight=0,triggerpulseWidth=0,triggerpulsePeakTime=0,mycharge_fracj=0;
