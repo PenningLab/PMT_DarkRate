@@ -167,27 +167,23 @@ int main(int argc, char *argv[]){
 			PyObject *pFunc = PyObject_GetAttrString(pModule,"calcrates");
 			if(pFunc && PyCallable_Check(pFunc)){
 				PyObject* pargs = PyTuple_New(2);
-				PyObject* pval;
+				PyObject* pval = NULL;
 				pval =  PyUnicode_FromFormat("%s",working_dir.c_str());
 				PyTuple_SetItem(pargs,0,pval);
 				pval = PyLong_FromLong(number_of_files);
 				PyTuple_SetItem(pargs,1,pval);
 
-				PyObject* myresult = PyObject_CallObject(pFunc,pargs);
-				Py_DECREF(pargs);
-				Py_DECREF(pval);
-				if(myresult != NULL){
-					myrate = PyFloat_AsDouble(myresult);
-					std::cout<<"Rate is "<<myrate<<std::endl;
-					Py_DECREF(myresult);
+				pval = PyObject_CallObject(pFunc,pargs);
+				if(pval != NULL){
+					myrate = PyFloat_AsDouble(pval);
+					std::cout<<"Rate as read by C++ is "<<myrate<<std::endl;
 				}
 				else{
-					Py_DECREF(pFunc);
-					Py_DECREF(pModule);
 					PyErr_Print();
 					std::cout<<"Failed to get result"<<std::endl;
 				}
-
+				Py_XDECREF(pval);
+				Py_DECREF(pargs);
 			}
 			else{
 				if (PyErr_Occurred())
@@ -195,13 +191,15 @@ int main(int argc, char *argv[]){
 				std::cout<<"Couldn't find calcrates"<<std::endl;
 			}
 			Py_XDECREF(pFunc);
-        	Py_DECREF(pModule);
+        	Py_XDECREF(pModule);
 		}
 		else{
 			PyErr_Print();
 			std::cout<<"Failed to load module"<<std::endl;
 		}
-		Py_FinalizeEx();
+		//std::cout<<"Pre close check"<<std::endl;
+		int pyoutcheck = Py_FinalizeEx();
+		std::cout<<"closing out python "<<pyoutcheck<<std::endl;
 	}
 
 	std::cout<<"\nCreating output file"<<std::endl;
@@ -238,7 +236,7 @@ int main(int argc, char *argv[]){
 	for (int i=initial_run;i<number_of_files;i++){
 		char root_file_name [320];
 		sprintf(root_file_name,"%s/%u_%s",working_dir.c_str(),i,filename.c_str());
-		cout<<"Reading in file"<<endl;
+		cout<<"Reading in file "<<i<<endl;
 		TTree* tree;
 		TTree* event_tree;
 		TFile *fin = new TFile(root_file_name,"READ");
@@ -269,7 +267,7 @@ int main(int argc, char *argv[]){
 			rtd3.push_back(irtd3);
 			rtd4.push_back(irtd4);
 		}
-		cout<<"Loading tree branches"<<endl;
+		cout<<" Loading tree branches"<<endl;
 		tree->SetBranchAddress("pulseHeight",&pulseHeight);
 		tree->SetBranchAddress("pulseRightEdge",&pulseRightEdge);
 		tree->SetBranchAddress("pulseLeftEdge",&pulseLeftEdge);
@@ -305,7 +303,7 @@ int main(int argc, char *argv[]){
 			float* inmountpoint = &inmount[0];
 			pulse->Fill(inmountpoint);
 			if(use_frac && pulsePeakTime>frac_start && pulsePeakTime<(frac_start+frac_time)) mycharge_frac[sweep]+=pulseCharge;
-			delete inmountpoint;
+			//delete inmountpoint;
 			//cout<<" This is root file : "<<i<<" we are reading entry : "<<j<<" with pulseHeight : "<<pulseHeight<<endl;
 		}
 		if (event_tree_enable){
@@ -321,9 +319,8 @@ int main(int argc, char *argv[]){
 				if(use_frac) mycharge_fracj = mycharge_frac[j];
 				event->Fill();
 			}
-			delete event_tree;
 		}
-		delete tree;
+		std::cout<<" Finished processing file No. "<<i<<std::endl;
 		fin->Close();
 	}//main for loop
 	fout->cd();
