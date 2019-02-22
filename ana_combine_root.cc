@@ -236,7 +236,7 @@ int main(int argc, char *argv[]){
 	for (int i=initial_run;i<number_of_files;i++){
 		char root_file_name [320];
 		sprintf(root_file_name,"%s/%u_%s",working_dir.c_str(),i,filename.c_str());
-		cout<<"Reading in file"<<endl;
+		cout<<"Reading in file "<<i<<endl;
 		TTree* tree;
 		TTree* event_tree;
 		TFile *fin = new TFile(root_file_name,"READ");
@@ -267,7 +267,7 @@ int main(int argc, char *argv[]){
 			rtd3.push_back(irtd3);
 			rtd4.push_back(irtd4);
 		}
-		cout<<"Loading tree branches"<<endl;
+		cout<<" Loading tree branches"<<endl;
 		tree->SetBranchAddress("pulseHeight",&pulseHeight);
 		tree->SetBranchAddress("pulseRightEdge",&pulseRightEdge);
 		tree->SetBranchAddress("pulseLeftEdge",&pulseLeftEdge);
@@ -320,7 +320,7 @@ int main(int argc, char *argv[]){
 				event->Fill();
 			}
 		}
-		std::cout<<"finished processing file no. "<<i<<std::endl;
+		std::cout<<" Finished processing file No. "<<i<<std::endl;
 		fin->Close();
 	}//main for loop
 	fout->cd();
