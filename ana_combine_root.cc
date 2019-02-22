@@ -195,13 +195,14 @@ int main(int argc, char *argv[]){
 				std::cout<<"Couldn't find calcrates"<<std::endl;
 			}
 			Py_XDECREF(pFunc);
-        	Py_DECREF(pModule);
+        	Py_XDECREF(pModule);
 		}
 		else{
 			PyErr_Print();
 			std::cout<<"Failed to load module"<<std::endl;
 		}
-		Py_FinalizeEx();
+		int pyoutcheck = Py_Finalize();
+		std::cout<<"closing out "<<pyoutcheck<<std::endl;
 	}
 
 	std::cout<<"\nCreating output file"<<std::endl;
