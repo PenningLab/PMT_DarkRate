@@ -319,9 +319,7 @@ int main(int argc, char *argv[]){
 				if(use_frac) mycharge_fracj = mycharge_frac[j];
 				event->Fill();
 			}
-			delete event_tree;
 		}
-		delete tree;
 		fin->Close();
 	}//main for loop
 	fout->cd();
