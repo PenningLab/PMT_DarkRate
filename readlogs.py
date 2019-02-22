@@ -31,13 +31,13 @@ def calcrates(dir,numfiles):
 		fulltime += temptimes[0]/float(numfiles)
 		fulltime2 += temptimes[0]*temptimes[0]/float(numfiles)
 		#print(str(i)+", Running total"+str(fulltime))
-	rate = float(numevts*numfiles)/total_livetime
-	print("rate "+str(rate))
+	rate = float(numevts)/total_livetime
+	#print("rate "+str(rate))
 	ratesig = fulltime2 - fulltime*fulltime
-	print("ratsig: "+str(ratesig))
+	#print("ratsig: "+str(ratesig))
 	ratesig = math.sqrt(ratesig)
 	ratesig = rate*ratesig/fulltime
-	print("ratsig: "+str(ratesig))
+	#print("ratsig: "+str(ratesig))
 	outline = "Rate is "+str(rate)+" +/- "+str(ratesig)+" Hz "+" total events is "+str(numevts)+" Total live time is "+str(total_livetime)
 	print(outline)
 	return rate
