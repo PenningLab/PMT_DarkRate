@@ -300,8 +300,8 @@ int main(int argc, char *argv[]){
 		}
 		for (int j=0;j<nument;j++){
 			tree->GetEntry(j);
-			double inmount[] = {pulseHeight,pulseRightEdge,pulseLeftEdge,pulseCharge,pulsePeakTime,CalibratedTime,baselinerms,windowRatio,i,sweep,bigstep,pl5,pl25,pl50,pl75,pl80,pl90,pl95};
-			double* inmountpoint = inmount;
+			float inmount[] = {pulseHeight,pulseRightEdge,pulseLeftEdge,pulseCharge,pulsePeakTime,CalibratedTime,baselinerms,windowRatio,i,sweep,bigstep,pl5,pl25,pl50,pl75,pl80,pl90,pl95};
+			float* inmountpoint = inmount;
 			pulse->Fill(inmountpoint);
 			if(use_frac && pulsePeakTime>frac_start && pulsePeakTime<(frac_start+frac_time)) mycharge_frac[sweep]+=pulseCharge;
 			//cout<<" This is root file : "<<i<<" we are reading entry : "<<j<<" with pulseHeight : "<<pulseHeight<<endl;
