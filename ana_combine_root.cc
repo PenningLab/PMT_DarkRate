@@ -167,28 +167,23 @@ int main(int argc, char *argv[]){
 			PyObject *pFunc = PyObject_GetAttrString(pModule,"calcrates");
 			if(pFunc && PyCallable_Check(pFunc)){
 				PyObject* pargs = PyTuple_New(2);
-				PyObject* pval;
+				PyObject* pval = NULL;
 				pval =  PyUnicode_FromFormat("%s",working_dir.c_str());
 				PyTuple_SetItem(pargs,0,pval);
 				pval = PyLong_FromLong(number_of_files);
 				PyTuple_SetItem(pargs,1,pval);
 
-				PyObject* myresult = PyObject_CallObject(pFunc,pargs);
-				Py_DECREF(pargs);
-				Py_DECREF(pval);
-				if(myresult != NULL){
-					myrate = PyFloat_AsDouble(myresult);
+				pval = PyObject_CallObject(pFunc,pargs);
+				if(pval != NULL){
+					myrate = PyFloat_AsDouble(pval);
 					std::cout<<"Rate is "<<myrate<<std::endl;
-					Py_DECREF(myresult);
-					std::cout<<"Completed pyrun, closing up"<<std::endl;
 				}
 				else{
-					Py_DECREF(pFunc);
-					Py_DECREF(pModule);
 					PyErr_Print();
 					std::cout<<"Failed to get result"<<std::endl;
 				}
-
+				Py_XDECREF(pval);
+				Py_DECREF(pargs);
 			}
 			else{
 				if (PyErr_Occurred())
