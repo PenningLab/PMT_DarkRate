@@ -215,9 +215,9 @@ int main(int argc, char *argv[]){
 	//}
 	std::cout<<"creating output ntuple"<<std::endl;
 	// variables
-	float pulseHeight=0,pulseRightEdge=0,pulseLeftEdge=0,pulseCharge=0,pulsePeakTime=0,CalibratedTime=0,windowRatio=0,baselinerms=0,sweep=0,bigstep=0,pl5=0,pl25=0,pl50=0,pl75=0,pl80=0,pl90=0,pl95=0,pl99=0;
+	float pulseHeight=0,pulseRightEdge=0,pulseLeftEdge=0,pulseCharge=0,pulsePeakTime=0,CalibratedTime=0,windowRatio=0,baselinerms=0,sweep=0,bigstep=0,plen5=0,plen25=0,plen50=0,plen75=0,plen80=0,plen90=0,plen95=0,plen99=0;
 	float charge=0,charge_frac=0,baseline=0,rms=0,npeaks=0,firstTime=0,triggerpulseHeight=0,triggerpulseWidth=0,triggerpulsePeakTime=0,mycharge_fracj=0;
-	TTree *event = new TTree("event","event");
+	TTree *event = new TTree("event","event");std::cout<<"\nCreating output file"<<std::endl;
 	event->Branch("charge",&charge,"charge/F");
 	event->Branch("charge_frac",&charge_frac,"charge_frac/F");
 	event->Branch("baseline",&baseline,"baseline/F");
@@ -280,14 +280,14 @@ int main(int argc, char *argv[]){
 		tree->SetBranchAddress("baselinerms",&baselinerms);
 		tree->SetBranchAddress("sweep",&sweep);
 		tree->SetBranchAddress("bigstep",&bigstep);
-		tree->SetBranchAddress("pulseLength5",&pl5);
-		tree->SetBranchAddress("pulseLength25",&pl25);
-		tree->SetBranchAddress("pulseLength50",&pl50);
-		tree->SetBranchAddress("pulseLength75",&pl75);
-		tree->SetBranchAddress("pulseLength80",&pl80);
-		tree->SetBranchAddress("pulseLength90",&pl90);
-		tree->SetBranchAddress("pulseLength95",&pl95);
-		tree->SetBranchAddress("pulseLength99",&pl99);
+		tree->SetBranchAddress("pulseLength5",&plen5);
+		tree->SetBranchAddress("pulseLength25",&plen25);
+		tree->SetBranchAddress("pulseLength50",&plen50);
+		tree->SetBranchAddress("pulseLength75",&plen75);
+		tree->SetBranchAddress("pulseLength80",&plen80);
+		tree->SetBranchAddress("pulseLength90",&plen90);
+		tree->SetBranchAddress("pulseLength95",&plen95);
+		tree->SetBranchAddress("pulseLength99",&plen99);
 		//tree->SetBranchAddress("triggerpulseHeight",&triggerpulseHeight);
 		//tree->SetBranchAddress("triggerpulseWidth",&triggerpulseWidth);
 		//tree->SetBranchAddress("triggerpulsePeakTime",&triggerpulsePeakTime);
@@ -301,10 +301,11 @@ int main(int argc, char *argv[]){
 		}
 		for (int j=0;j<nument;j++){
 			tree->GetEntry(j);
-			float inmount[] = {pulseHeight,pulseRightEdge,pulseLeftEdge,pulseCharge,pulsePeakTime,CalibratedTime,baselinerms,windowRatio,i,sweep,bigstep,pl5,pl25,pl50,pl75,pl80,pl90,pl95};
-			float* inmountpoint = inmount;
+			float inmount[] = {pulseHeight,pulseRightEdge,pulseLeftEdge,pulseCharge,pulsePeakTime,CalibratedTime,baselinerms,windowRatio,i,sweep,bigstep,plen5,plen25,plen50,plen75,plen80,plen90,plen95};
+			float* inmountpoint = &inmount[0];
 			pulse->Fill(inmountpoint);
 			if(use_frac && pulsePeakTime>frac_start && pulsePeakTime<(frac_start+frac_time)) mycharge_frac[sweep]+=pulseCharge;
+			delete inmountpoint;
 			//cout<<" This is root file : "<<i<<" we are reading entry : "<<j<<" with pulseHeight : "<<pulseHeight<<endl;
 		}
 		if (event_tree_enable){
