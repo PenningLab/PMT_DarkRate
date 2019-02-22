@@ -176,7 +176,7 @@ int main(int argc, char *argv[]){
 				pval = PyObject_CallObject(pFunc,pargs);
 				if(pval != NULL){
 					myrate = PyFloat_AsDouble(pval);
-					std::cout<<"Rate is "<<myrate<<std::endl;
+					std::cout<<"Rate as read by C++ is "<<myrate<<std::endl;
 				}
 				else{
 					PyErr_Print();
@@ -197,9 +197,9 @@ int main(int argc, char *argv[]){
 			PyErr_Print();
 			std::cout<<"Failed to load module"<<std::endl;
 		}
-		std::cout<<"Pre close check"<<std::endl;
+		//std::cout<<"Pre close check"<<std::endl;
 		int pyoutcheck = Py_FinalizeEx();
-		std::cout<<"closing out "<<pyoutcheck<<std::endl;
+		std::cout<<"closing out python "<<pyoutcheck<<std::endl;
 	}
 
 	std::cout<<"\nCreating output file"<<std::endl;
