@@ -320,6 +320,7 @@ int main(int argc, char *argv[]){
 				event->Fill();
 			}
 		}
+		std::cout<<"finished reading file no. "<<i<<std::endl;
 		fin->Close();
 	}//main for loop
 	fout->cd();
