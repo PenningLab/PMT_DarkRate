@@ -303,7 +303,7 @@ int main(int argc, char *argv[]){
 			float* inmountpoint = &inmount[0];
 			pulse->Fill(inmountpoint);
 			if(use_frac && pulsePeakTime>frac_start && pulsePeakTime<(frac_start+frac_time)) mycharge_frac[sweep]+=pulseCharge;
-			delete inmountpoint;
+			//delete inmountpoint;
 			//cout<<" This is root file : "<<i<<" we are reading entry : "<<j<<" with pulseHeight : "<<pulseHeight<<endl;
 		}
 		if (event_tree_enable){
@@ -320,7 +320,7 @@ int main(int argc, char *argv[]){
 				event->Fill();
 			}
 		}
-		std::cout<<"finished reading file no. "<<i<<std::endl;
+		std::cout<<"finished processing file no. "<<i<<std::endl;
 		fin->Close();
 	}//main for loop
 	fout->cd();
