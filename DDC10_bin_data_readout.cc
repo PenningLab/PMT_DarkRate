@@ -76,6 +76,12 @@ int baseline_samples_set = 160;
 int MovingWindowSize;
 int iteration = 0.0;
 int pth = 5.0;
+double temp_top_charge = 0.0;
+double temp_bottom_charge = 0.0;
+double temp_top_peak = 0.0;
+double temp_bottom_peak = 0.0;
+double temp_top_peak_time = 0.0;
+double temp_bottom_peak_time = 0.0;
 
 
 //vector<int> run_info;
@@ -126,6 +132,14 @@ vector<double> event_charge_ten;
 vector<double> event_baseline;
 vector<double> event_rms;
 vector<double> event_time;
+
+vector<double> Top_charge;
+vector<double> Bottome_charge;
+vector<double> Top_Bottom_ratio;
+vector<double> Top_peak;
+vector<double> Bottome_peak;
+vector<double> Top_time;
+vector<double> Bottom_time;
 
 int number_of_samples;
 int Nchannels;
@@ -312,7 +326,16 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
 				pulse_length90.push_back(tempq90);
 				pulse_length95.push_back(tempq95);
 				pulse_length99.push_back(tempq99);
-
+		if (temp_peak>190 &&temp_peak<200){
+		        temp_top_charge = SimpsIntegral(v,b,left,right);
+             		temp_top_peak = max;
+                	temp_top_peak_time = temp_peak;
+            	}
+            	if (temp_peak>200 &&temp_peak<225){
+		        temp_bottom_charge = SimpsIntegral(v,b,left,right);
+                	temp_bottom_peak = max;
+                	temp_bottom_peak_time = temp_peak;
+            	}
 				temp_charge +=SimpsIntegral(v,b,left,right)/resistance;
                 if (i<300)
                     temp_ten_charge += SimpsIntegral(v,b,left,right)/resistance;
@@ -749,7 +772,7 @@ int main(int argc, char *argv[]){
 	else
     	pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:sweep:bigstep:pulseLength5:pulseLength25:pulseLength50:pulseLength75:pulseLength80:pulseLength90:pulseLength95:pulseLength99");
 
-	TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms:npulses");
+	TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms:npulses:top:bottom:ratio:topPeak:bottomPeak:topTime:bottomTime");
 	TTree *wforms_tree = new TTree("waveforms","Waveform Tree");
 	float waveforms[8192];
 	float trigger_t;
@@ -820,6 +843,19 @@ int main(int argc, char *argv[]){
 		baseline_sweep.push_back(rms_value);// save baseline for checking baseline shifting
 		dark_hits->Fill(number_of_peaks);
 		npeaks.push_back(number_of_peaks);
+		Top_charge.push_back(temp_top_charge);
+                    Bottome_charge.push_back(temp_bottom_charge);
+                    Top_Bottom_ratio.push_back(temp_top_charge/temp_bottom_charge);
+                    Top_peak.push_back(temp_top_peak);
+                    Bottome_peak.push_back(temp_bottom_peak);
+                    Top_time.push_back(temp_top_peak_time);
+                    Bottom_time.push_back(temp_bottom_peak_time);
+                    temp_top_charge = 0.0;
+                    temp_bottom_charge = 0.0;
+                    temp_top_peak = 0.0;
+                    temp_bottom_peak = 0.0;
+                    temp_top_peak_time = 0.0;
+                    temp_bottom_peak_time = 0.0;
 		baselinev.clear();
 		//fill canvases
 		if(sweep<100){
@@ -900,7 +936,7 @@ int main(int argc, char *argv[]){
         baseline_plot->SetPoint(i,i,baseline_sweep[i]);
     }
     for (int i=0;i<event_charge.size();i++){
-      event->Fill(event_charge[i],event_charge_ten[i],event_baseline[i],event_rms[i],npeaks[i]);
+      event->Fill(event_charge[i],event_charge_ten[i],event_baseline[i],event_rms[i],npeaks[i],Top_charge[i],Bottome_charge[i],Top_Bottom_ratio[i],Top_peak[i],Bottome_peak[i],Top_time[i],Bottom_time[i]);
     }
 
     //Baseline plot

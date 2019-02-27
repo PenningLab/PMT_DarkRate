@@ -214,13 +214,20 @@ int main(int argc, char *argv[]){
 	std::cout<<"creating output ntuple"<<std::endl;
 	// variables
 	float pulseHeight=0,pulseRightEdge=0,pulseLeftEdge=0,pulseCharge=0,pulsePeakTime=0,CalibratedTime=0,windowRatio=0,baselinerms=0,sweep=0,bigstep=0,plen5=0,plen25=0,plen50=0,plen75=0,plen80=0,plen90=0,plen95=0,plen99=0;
-	float charge=0,charge_frac=0,baseline=0,rms=0,npeaks=0,firstTime=0,triggerpulseHeight=0,triggerpulseWidth=0,triggerpulsePeakTime=0,mycharge_fracj=0;
+	float charge=0,charge_frac=0,baseline=0,rms=0,npeaks=0,firstTime=0,triggerpulseHeight=0,triggerpulseWidth=0,triggerpulsePeakTime=0,mycharge_fracj=0,top=0,bottom=0,ratio=0,topPeak=0,bottomPeak=0,topTime=0,bottomTime=0;
 	TTree *event = new TTree("event","event");std::cout<<"\nCreating output file"<<std::endl;
 	event->Branch("charge",&charge,"charge/F");
 	event->Branch("charge_frac",&charge_frac,"charge_frac/F");
 	event->Branch("baseline",&baseline,"baseline/F");
 	event->Branch("rms",&rms,"rms/F");
 	event->Branch("npulses",&npeaks,"npulse/F");
+	event->Branch("top",&top,"top/F");
+        event->Branch("bottom",&bottom,"bottom/F");
+        event->Branch("ratio",&ratio,"ratio/F");
+        event->Branch("topPeak",&topPeak,"topPeak/F");
+        event->Branch("bottomPeak",&bottomPeak,"bottomPeak/F");
+	event->Branch("topTime",&topTime,"topTime/F");
+        event->Branch("bottomTime",&bottomTime,"bottomTime/F");
 	if(use_frac) event->Branch("mycharge_frac",&mycharge_fracj,"mycharge_fracj/F");
 	//    short int sweep=0;
 	//int run=0;
@@ -312,7 +319,13 @@ int main(int argc, char *argv[]){
 			event_tree->SetBranchAddress("baseline",&baseline);
 			event_tree->SetBranchAddress("rms",&rms);
 			event_tree->SetBranchAddress("npulses",&npeaks);
-
+			event_tree->SetBranchAddress("top",&top);
+                        event_tree->SetBranchAddress("bottom",&bottom);
+                        event_tree->SetBranchAddress("ratio",&ratio);
+                        event_tree->SetBranchAddress("topPeak",&topPeak);
+                        event_tree->SetBranchAddress("bottomPeak",&bottomPeak);
+			event_tree->SetBranchAddress("topTime",&topTime);
+                        event_tree->SetBranchAddress("bottomTime",&bottomTime);
 			int numevts = event_tree->GetEntries();
 			for (int j =0;j<event_tree->GetEntries();j++){
 				event_tree->GetEntry(j);
