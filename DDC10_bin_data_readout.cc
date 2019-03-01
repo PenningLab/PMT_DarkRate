@@ -834,7 +834,7 @@ int main(int argc, char *argv[]){
 			rms_value = (use_basefile ? fixedbase : baseline_rms(smoothedBaseLine,smoothingv,&thisbase));
 		}
 		else {
-            if (debug)
+            if (debug_mode)
                 cout<<" Get to pulsefinding ! "<<endl;
 			rms_value = (use_basefile ? fixedbase : baseline_rms(baselinev,raw_waveform,&thisbase));
 			extract_event(raw_waveform,rms_value,thisbase,number_of_samples,(use_trigger ? trigger_t : 0));
