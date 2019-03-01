@@ -198,6 +198,7 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
             cout<<" Get to pulsefinding ! "<<endl;
 
         if (integral > pThresh){
+            cout<<" In side the loop !"<<endl;
             if (debug_mode){
 				cout<<" This is sample : "<<i<<" integral value is : "<<integral<<" pThresh is : "<<pThresh<<endl;
 			}
