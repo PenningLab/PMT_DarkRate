@@ -171,8 +171,7 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
 
   double pThresh = (trig ? tpulseThresh : pulseThresh) * rms * windowSize;
   double eThresh = edgeThresh * rms * windowSize;
-  if (debug_mode)
-      cout<<" Get to pulsefinding ! "<<endl;
+
 	double temp_charge = 0;
     double temp_ten_charge = 0;
     double pulse_height_thresh = pth*rms;
@@ -195,7 +194,8 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
         double temp_endv = 0;
 
 		double temp_bigstep = 0;
-
+        if (debug_mode)
+            cout<<" Get to pulsefinding ! "<<endl;
 
         if (integral > pThresh){
             if (debug_mode){
