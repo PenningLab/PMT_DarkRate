@@ -238,6 +238,7 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
                         break;
                     }
                 }
+
             }
 
             double max = -1.0e9;
@@ -373,8 +374,8 @@ double baseline_rms(vector<double> &v, vector<float> &sample,double *irms){
     }
     rms = sqrt(rms / v.size());
     if (signal_start&&debug_mode){
-        cout<<" rms is : "<<rms<<" baseline is : "<<baseline_samples<<endl;
-        getchar();
+        //cout<<" rms is : "<<rms<<" baseline is : "<<baseline_samples<<endl;
+        //getchar();
     }
     //if (smoothing || !use_basefile)
     //    extract_event(sample,baseline_samples,rms,sample.size(),0,false);
