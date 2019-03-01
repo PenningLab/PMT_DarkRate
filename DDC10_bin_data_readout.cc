@@ -206,6 +206,8 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
                 left --;
                 integral = SimpsIntegral(v,b,left,left+windowSize);
                 temp_startv = v[left];
+                if (left == 206)
+                    break;
 				if (debug_mode){
 
 					cout<<"Left is  : "<<left<<" integral is : "<<integral<<" eThresh is : "<<eThresh<<endl;
@@ -222,7 +224,8 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
                     right ++;
                     integral = SimpsIntegral(v,b,right-windowSize,right);
                     temp_endv = v[right];
-
+                    if (right == 208)
+                        break;
                 }
                 end = true ;
                 int r = right;
