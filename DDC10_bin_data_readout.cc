@@ -767,13 +767,13 @@ int main(int argc, char *argv[]){
 
 	//TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms:npulses");
     event = new TTree("event"," event info");
-    event->SetBranch("charge",&temp_charge);
-    event->SetBranch("charge_frac",&temp_ten_charge);
-    event->SetBranch("QPE",&event_QPE);
-    event->SetBranch("Height"&event_Height);
-    event->SetBranch("stime",&event_stime);
-    event->SetBranch("etime",&event_etime);
-    event->SetBranch("ptime",&event_ptime);
+    event->Branch("charge",&event_charge);
+    event->Branch("charge_frac",&event_charge_ten);
+    event->Branch("QPE",&event_QPE);
+    event->Branch("Height",&event_Height);
+    event->Branch("stime",&event_stime);
+    event->Branch("etime",&event_etime);
+    event->Branch("ptime",&event_ptime);
     //event->SetBranch("charge_frac");
     TTree *wforms_tree = new TTree("waveforms","Waveform Tree");
 	float waveforms[8192];
@@ -839,8 +839,8 @@ int main(int argc, char *argv[]){
       getchar();
     }
 
-		event_baseline.push_back(rms_value);
-		event_rms.push_back(thisbase);
+		//event_baseline.push_back(rms_value);
+		//event_rms.push_back(thisbase);
 		//event_time.push_back(number_of_samples);
 		baseline_sweep.push_back(rms_value);// save baseline for checking baseline shifting
 		dark_hits->Fill(number_of_peaks);
