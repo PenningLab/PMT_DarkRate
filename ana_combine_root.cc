@@ -328,9 +328,9 @@ int main(int argc, char *argv[]){
 			event_tree->SetBranchAddress("charge_frac",&charge_frac,&bcharge_frac);
 			event_tree->SetBranchAddress("QPE",&QPE,&bQPE);
             event_tree->SetBranchAddress("Height",&Height,&bHeight);
-            event_tree->SetBranchAddress("start",&start,&bstart);
-            event_tree->SetBranchAddress("end",&end,&bend);
-            event_tree->SetBranchAddress("PeakTime",&PeakTime,&bPeakTime);
+            event_tree->SetBranchAddress("stime",&start,&bstart);
+            event_tree->SetBranchAddress("etime",&end,&bend);
+            event_tree->SetBranchAddress("ptime",&PeakTime,&bPeakTime);
 
 			int numevts = event_tree->GetEntries();
 			for (int j =0;j<event_tree->GetEntries();j++){
