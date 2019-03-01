@@ -76,6 +76,7 @@ int baseline_samples_set = 160;
 int MovingWindowSize;
 int iteration = 0.0;
 int pth = 5.0;
+int counter = 0;
 TTree* event;
 
 //vector<int> run_info;
@@ -199,7 +200,7 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
 
         if (integral > pThresh){
             if (debug_mode){
-				cout<<" This is sample : "<<i<<" integral value is : "<<integral<<" pThresh is : "<<pThresh<<endl;
+				cout<<" This is event : "<<counter<<" This is sample : "<<i<<" integral value is : "<<integral<<" pThresh is : "<<pThresh<<endl;
 			}
             left = i;
             integral = 1.0e9;
@@ -209,7 +210,7 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
                 temp_startv = v[left];
                 if (debug_mode){
 
-					cout<<"Left is  : "<<left<<" integral is : "<<integral<<" eThresh is : "<<eThresh<<endl;
+					cout<<" This is event : "<<counter<<"Left is  : "<<left<<" integral is : "<<integral<<" eThresh is : "<<eThresh<<endl;
 					getchar();
 				}
                 if (left == 206)
@@ -228,7 +229,7 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
                     temp_endv = v[right];
                     if (debug_mode){
 
-    					cout<<"Right is  : "<<right<<" integral is : "<<integral<<" eThresh is : "<<eThresh<<endl;
+    					cout<<" This is event : "<<counter<<"Right is  : "<<right<<" integral is : "<<integral<<" eThresh is : "<<eThresh<<endl;
     					getchar();
     				}
                     if (right == 208)
@@ -355,6 +356,7 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
         }//if statement
 
     }
+    counter++;
     //getchar();
 	if (!trig){
 		event_charge_ten.push_back(temp_ten_charge);
