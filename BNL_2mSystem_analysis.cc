@@ -98,7 +98,7 @@ int main(int argc, char *argv[]){
 
 		for (int j=0;j<number_files;j++){
 			char filename[100];
-			sprintf(filename,"%s/%s/%u_PMT_Trigger.root",infiledir.c_str(),measurement[i].c_str());
+			sprintf(filename,"%s/%s/%u_PMT_Trigger.root",infiledir.c_str(),measurement[i].c_str(),j);
 			TFile* f = new TFile(filename,"READ");
 			TTree* event_tree;
 			f->GetObject("event",event_tree);
