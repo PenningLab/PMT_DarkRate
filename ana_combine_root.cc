@@ -347,7 +347,7 @@ int main(int argc, char *argv[]){
 				Total_charge.push_back(charge->at(j));
 				Total_charge_frac.push_back(charge_frac->at(j));
 				Total_QPE.push_back(QPE->at(j));
-				Total_Height`.push_back(Height->at(j));
+				Total_Height.push_back(Height->at(j));
 				Total_start.push_back(start->at(j));
 				Total_end.push_back(end->at(j));
 				Total_PeakTime.push_back(PeakTime->at(j));
