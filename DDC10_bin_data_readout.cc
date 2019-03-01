@@ -242,6 +242,11 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
                     integral = SimpsIntegral(v,b,r-windowSize,r);
                     if (integral > pThresh){
                         right = r;
+                        if (debug_mode){
+
+        					cout<<"Look forwad : This is event : "<<counter<<"Right is  : "<<right<<" integral is : "<<integral<<" eThresh is : "<<eThresh<<endl;
+        					getchar();
+        				}
                         end = false;
                         break;
                     }
