@@ -373,8 +373,8 @@ double baseline_rms(vector<double> &v, vector<float> &sample,double *irms){
         cout<<" rms is : "<<rms<<" baseline is : "<<baseline_samples<<endl;
         getchar();
     }
-    if (smoothing || !use_basefile)
-        extract_event(sample,baseline_samples,rms,sample.size(),0,false);
+    //if (smoothing || !use_basefile)
+    //    extract_event(sample,baseline_samples,rms,sample.size(),0,false);
 
     //}
 	irms[0] = rms;
