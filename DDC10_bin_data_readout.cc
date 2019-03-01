@@ -839,8 +839,8 @@ int main(int argc, char *argv[]){
   		}
 
     if (debug_mode){
-      cout<<" basline is  : "<<rms_value<<" rms is : "<<thisbase<<endl;
-      getchar();
+      //cout<<" basline is  : "<<rms_value<<" rms is : "<<thisbase<<endl;
+      //getchar();
     }
 
 		//event_baseline.push_back(rms_value);
