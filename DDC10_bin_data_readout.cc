@@ -198,7 +198,6 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
             cout<<" Get to pulsefinding ! "<<endl;
 
         if (integral > pThresh){
-            cout<<" In side the loop !"<<endl;
             if (debug_mode){
 				cout<<" This is sample : "<<i<<" integral value is : "<<integral<<" pThresh is : "<<pThresh<<endl;
 			}
@@ -208,13 +207,14 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
                 left --;
                 integral = SimpsIntegral(v,b,left,left+windowSize);
                 temp_startv = v[left];
-                if (left == 206)
-                    break;
-				if (debug_mode){
+                if (debug_mode){
 
 					cout<<"Left is  : "<<left<<" integral is : "<<integral<<" eThresh is : "<<eThresh<<endl;
 					getchar();
 				}
+                if (left == 206)
+                    break;
+
             }
 
             integral = 1.0e9;
@@ -226,6 +226,11 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
                     right ++;
                     integral = SimpsIntegral(v,b,right-windowSize,right);
                     temp_endv = v[right];
+                    if (debug_mode){
+
+    					cout<<"Right is  : "<<right<<" integral is : "<<integral<<" eThresh is : "<<eThresh<<endl;
+    					getchar();
+    				}
                     if (right == 208)
                         break;
                 }
