@@ -97,7 +97,7 @@ int main(int argc, char *argv[]){
 	for (int i=0;i<2;i++){
 
 		for (int j=0;j<number_files;j++){
-			char filename[100];
+			char filename[200];
 			sprintf(filename,"%s/%s/%u_PMT_Trigger.root",infiledir.c_str(),measurement[i].c_str(),j);
 			TFile* f = new TFile(filename,"READ");
 			TTree* event_tree;
@@ -139,7 +139,7 @@ int main(int argc, char *argv[]){
 
 				cout<<" This is file : "<<filename<<" event : "<<ie<<" has pulses : "<<QPE->size()<<endl;
 			}
-
+			getchar();
 			//f.Close();
 		}
 
