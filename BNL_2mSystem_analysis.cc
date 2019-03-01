@@ -26,7 +26,7 @@
 #include <time.h>
 #include <numeric>
 
-#include <Python.h>
+
 
 #include <TMatrixDSymEigen.h>
 //#include <libRATEvent.so>
@@ -140,7 +140,7 @@ int main(int argc, char *argv[]){
 				cout<<" This is file : "<<filename<<" event : "<<ie<<" has pulses : "<<QPE->size()<<endl;
 			}
 
-			f.Close();
+			//f.Close();
 		}
 
 
