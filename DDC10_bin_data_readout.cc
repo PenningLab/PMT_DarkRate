@@ -171,7 +171,8 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
 
   double pThresh = (trig ? tpulseThresh : pulseThresh) * rms * windowSize;
   double eThresh = edgeThresh * rms * windowSize;
-
+  if (debug_mode)
+      cout<<" Get to pulsefinding ! "<<endl;
 	double temp_charge = 0;
     double temp_ten_charge = 0;
     double pulse_height_thresh = pth*rms;
@@ -834,8 +835,7 @@ int main(int argc, char *argv[]){
 			rms_value = (use_basefile ? fixedbase : baseline_rms(smoothedBaseLine,smoothingv,&thisbase));
 		}
 		else {
-            if (debug_mode)
-                cout<<" Get to pulsefinding ! "<<endl;
+
 			rms_value = (use_basefile ? fixedbase : baseline_rms(baselinev,raw_waveform,&thisbase));
 			extract_event(raw_waveform,rms_value,thisbase,number_of_samples,(use_trigger ? trigger_t : 0));
   		}
