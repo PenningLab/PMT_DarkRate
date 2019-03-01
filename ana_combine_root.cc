@@ -222,6 +222,15 @@ int main(int argc, char *argv[]){
 	vector<double> *start = 0;
 	vector<double> *end = 0;
 	vector<double> *PeakTime = 0;
+
+	vector<double> Total_charge;
+	vector<double> Total_charge_frac;
+	vector<double> Total_QPE;
+	vector<double> Total_Height;
+	vector<double> Total_start;
+	vector<double> Total_end;
+	vector<double> Total_PeakTime;
+
 	TTree *event = new TTree("event","event");std::cout<<"\nCreating output file"<<std::endl;
 	event->Branch("charge",&charge,"charge/F");
 	event->Branch("charge_frac",&charge_frac,"charge_frac/F");
@@ -335,13 +344,22 @@ int main(int argc, char *argv[]){
 			int numevts = event_tree->GetEntries();
 			for (int j =0;j<event_tree->GetEntries();j++){
 				event_tree->GetEntry(j);
+				Total_charge.push_back(charge->at(j));
+				Total_charge_frac.push_back(charge_frac->at(j));
+				Total_QPE.push_back(QPE->at(j));
+				Total_Height`.push_back(Height->at(j));
+				Total_start.push_back(start->at(j));
+				Total_end.push_back(end->at(j));
+				Total_PeakTime.push_back(PeakTime->at(j));
 				if(use_frac) mycharge_fracj = mycharge_frac[j];
-				event->Fill();
+
 			}
 		}
+
 		std::cout<<" Finished processing file No. "<<i<<std::endl;
 		fin->Close();
 	}//main for loop
+	event->Fill();
 	fout->cd();
 
 	TGraphErrors* dark_plot = new TGraphErrors();
