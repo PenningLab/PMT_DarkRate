@@ -150,14 +150,14 @@ int main(int argc, char *argv[]){
 				double temp_ratio = 0;
 				bool top_fire = false;
 				bool bottom_fire = false;
-				for (unsigned int ipulse=0;ipulse<QPE->size();ipulse++){
+				for (unsigned int ipulse=0;ipulse<Height->size();ipulse++){
 					if (PeakTime->at(ipulse)>195&&PeakTime->at(ipulse)<203){
-						top_charge = QPE->at(ipulse);
+						top_charge = Height->at(ipulse);
 						top_fire = true;
 						cout<<" top charge : "<<top_charge<<endl;
 					}
 					if (PeakTime->at(ipulse)>210&&PeakTime->at(ipulse)<222){
-						bottom_charge = QPE->at(ipulse);
+						bottom_charge = Height->at(ipulse);
 						bottom_fire = true;
 						cout<<" bottom charge : "<<bottom_charge<<endl;
 						break;
