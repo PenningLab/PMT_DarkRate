@@ -194,7 +194,7 @@ int main(int argc, char *argv[]){
 
 
 			}
-			cout<<" ratio_counter : "<<ratio_counter<<endl;
+			//cout<<" ratio_counter : "<<ratio_counter<<endl;
 			ratio /= ratio_counter;
 			ratio_std -= ratio*ratio*ratio_counter;
 			ratio_std = sqrt(ratio_std/(ratio_counter-1));
@@ -234,7 +234,7 @@ int main(int argc, char *argv[]){
 		height_ratio.push_back(total_ratio_height);
 		height_ratio_std.push_back(total_ratio_height_std);
 
-		getchar();
+		//getchar();
 
 
 	}
