@@ -127,6 +127,9 @@ int main(int argc, char *argv[]){
             event_tree->SetBranchAddress("etime",&end,&bend);
             event_tree->SetBranchAddress("ptime",&PeakTime,&bPeakTime);
 
+			double ratio = 0;
+			double ratio_std = 0;
+			double ratio_counter = 0;
 			for (int ie=0;ie<event_tree->GetEntries();ie++){
 				Long64_t tentry = event_tree->LoadTree(ie);
       			bcharge->GetEntry(tentry);
@@ -138,7 +141,36 @@ int main(int argc, char *argv[]){
 				bPeakTime->GetEntry(tentry);
 
 				cout<<" This is file : "<<filename<<" event : "<<ie<<" has pulses : "<<QPE->size()<<endl;
+				double top_charge = 0;
+				double bottom_charge = 0;
+				double temp_ratio = 0;
+				bool top_fire = false;
+				bool bottom_fire = false;
+				for (int ipulse=0;ipulse<QPE->size();ipulse++){
+					if (ptime->at(ipulse)>195&&ptime->at(ipulse)<203){
+						top_charge = QPE->at(ipulse);
+						top_fire = true;
+					}
+					if (ptime->at(ipulse)>210&&ptime->at(ipulse)<222){
+						bottom_charge = QPE->at(ipulse);
+						bottom_fire = true;
+						break;
+					}
+				}
+				if (top_fire && bottom_fire){
+					temp_ratio = top_charge/bottom_charge;
+					ratio += temp_ratio;
+					ratio_std += temp_ratio*temp_ratio;
+					ratio_counter ++;
+				}
+
+
 			}
+			ratio /= ratio_counter;
+			ratio_std -= ratio*ratio*ratio_counter;
+			ratio_std = sqrt(ratio_std/(ratio_counter-1));
+
+			cout<<"File : "<<measurement[i]<<" This is file : "<<j<<" it has ratio : "<<ratio<<" with std : "<<ratio_std<<endl;
 			getchar();
 			//f.Close();
 		}
