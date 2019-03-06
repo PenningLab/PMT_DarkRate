@@ -188,7 +188,7 @@ int main(int argc, char *argv[]){
 			getchar();
 			//f.Close();
 		}
-		cout<<" total_ratio_counter : "<<total_ratio_counter<<endl;
+		cout<<" total_ratio_counter : "<<total_ratio_counter<<" total_ratio_std :  "<<total_ratio_std<<endl;
 		total_ratio /= total_ratio_counter;
 		cout<<"total_ratio : "<<total_ratio<<endl;
 		total_ratio_std -= total_ratio*total_ratio*total_ratio_counter;
