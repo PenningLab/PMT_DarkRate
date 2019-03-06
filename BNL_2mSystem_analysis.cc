@@ -154,10 +154,12 @@ int main(int argc, char *argv[]){
 					if (PeakTime->at(ipulse)>195&&PeakTime->at(ipulse)<203){
 						top_charge = QPE->at(ipulse);
 						top_fire = true;
+						cout<<" top charge : "<<top_charge<<endl;
 					}
 					if (PeakTime->at(ipulse)>210&&PeakTime->at(ipulse)<222){
 						bottom_charge = QPE->at(ipulse);
 						bottom_fire = true;
+						cout<<" bottom charge : "<<bottom_charge<<endl;
 						break;
 					}
 				}
@@ -166,6 +168,7 @@ int main(int argc, char *argv[]){
 					ratio += temp_ratio;
 					ratio_std += temp_ratio*temp_ratio;
 					ratio_counter ++;
+					cout<<" temp_ratio : "<<temp_ratio<<endl;
 					ratio_fire = true;
 				}
 
@@ -175,7 +178,7 @@ int main(int argc, char *argv[]){
 				ratio /= ratio_counter;
 				ratio_std -= ratio*ratio*ratio_counter;
 				ratio_std = sqrt(ratio_std/(ratio_counter-1));
-				cout<<"File : "<<measurement[i]<<" it has ratio : "<<total_ratio<<" with std : "<<total_ratio_std<<endl;
+				cout<<"File : "<<measurement[i]<<" This is file : "<<j<<" it has ratio : "<<total_ratio<<" with std : "<<total_ratio_std<<endl;
 
 				total_ratio += ratio;
 				total_ratio_std += ratio_std*ratio_std;
