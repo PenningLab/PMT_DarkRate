@@ -133,7 +133,7 @@ int main(int argc, char *argv[]){
 			double ratio = 0;
 			double ratio_std = 0;
 			double ratio_counter = 0;
-			bool ratio_fire = false;
+
 			for (int ie=0;ie<event_tree->GetEntries();ie++){
 				Long64_t tentry = event_tree->LoadTree(ie);
       			bcharge->GetEntry(tentry);
@@ -169,21 +169,21 @@ int main(int argc, char *argv[]){
 					ratio_std += temp_ratio*temp_ratio;
 					ratio_counter ++;
 					cout<<" temp_ratio : "<<temp_ratio<<endl;
-					ratio_fire = true;
+
 				}
 
 
 			}
-			if (ratio_fire){
-				ratio /= ratio_counter;
-				ratio_std -= ratio*ratio*ratio_counter;
-				ratio_std = sqrt(ratio_std/(ratio_counter-1));
-				cout<<"File : "<<measurement[i]<<" This is file : "<<j<<" it has ratio : "<<total_ratio<<" with std : "<<total_ratio_std<<endl;
+			cout<<" ratio_counter : "<<ratio_counter<<endl;
+			ratio /= ratio_counter;
+			ratio_std -= ratio*ratio*ratio_counter;
+			ratio_std = sqrt(ratio_std/(ratio_counter-1));
+			cout<<"File : "<<measurement[i]<<" This is file : "<<j<<" it has ratio : "<<total_ratio<<" with std : "<<total_ratio_std<<endl;
 
-				total_ratio += ratio;
-				total_ratio_std += ratio_std*ratio_std;
-				total_ratio_counter++;
-			}
+			total_ratio += ratio;
+			total_ratio_std += ratio_std*ratio_std;
+			total_ratio_counter++;
+
 			getchar();
 			//f.Close();
 		}
