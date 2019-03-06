@@ -95,7 +95,10 @@ int main(int argc, char *argv[]){
 	}
 	string measurement[2] = {"BNL_test_50ns_181_5cm_2_28_2019_1000_samples_10000_events","BNL_test_50ns_144_7cm_2_28_2019_1000_samples_10000_events"};
 	for (int i=0;i<2;i++){
-
+		double total_ratio = 0;
+		double total_ratio_std = 0;
+		double total_ratio_counter = 0;
+		//bool total_ratio_fire = false;
 		for (int j=0;j<number_files;j++){
 			char filename[200];
 			sprintf(filename,"%s/%s/%u_PMT_Trigger.root",infiledir.c_str(),measurement[i].c_str(),j);
@@ -130,6 +133,7 @@ int main(int argc, char *argv[]){
 			double ratio = 0;
 			double ratio_std = 0;
 			double ratio_counter = 0;
+			bool ratio_fire = false;
 			for (int ie=0;ie<event_tree->GetEntries();ie++){
 				Long64_t tentry = event_tree->LoadTree(ie);
       			bcharge->GetEntry(tentry);
@@ -140,7 +144,7 @@ int main(int argc, char *argv[]){
 				bend->GetEntry(tentry);
 				bPeakTime->GetEntry(tentry);
 
-				cout<<" This is file : "<<filename<<" event : "<<ie<<" has pulses : "<<QPE->size()<<endl;
+				//cout<<" This is file : "<<filename<<" event : "<<ie<<" has pulses : "<<QPE->size()<<endl;
 				double top_charge = 0;
 				double bottom_charge = 0;
 				double temp_ratio = 0;
@@ -162,19 +166,29 @@ int main(int argc, char *argv[]){
 					ratio += temp_ratio;
 					ratio_std += temp_ratio*temp_ratio;
 					ratio_counter ++;
+					ratio_fire = true;
 				}
 
 
 			}
-			ratio /= ratio_counter;
-			ratio_std -= ratio*ratio*ratio_counter;
-			ratio_std = sqrt(ratio_std/(ratio_counter-1));
+			if (ratio_fire){
+				ratio /= ratio_counter;
+				ratio_std -= ratio*ratio*ratio_counter;
+				ratio_std = sqrt(ratio_std/(ratio_counter-1));
 
-			cout<<"File : "<<measurement[i]<<" This is file : "<<j<<" it has ratio : "<<ratio<<" with std : "<<ratio_std<<endl;
-			getchar();
+
+				total_ratio += ratio;
+				total_ratio_std += ratio_std*ratio_std;
+				total_ratio_counter++;
+			}
 			//f.Close();
 		}
 
+		total_ratio /= total_ratio_counter;
+		total_ratio_std -= total_ratio*total_ratio*total_ratio_counter;
+		total_ratio_std = sqrt(ratio_std/(total_ratio_counter-1));
+		cout<<"File : "<<measurement[i]<<" This is file : "<<j<<" it has ratio : "<<total_ratio<<" with std : "<<total_ratio_std<<endl;
+		getchar();
 
 
 	}
