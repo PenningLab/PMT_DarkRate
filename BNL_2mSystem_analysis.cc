@@ -211,7 +211,7 @@ int main(int argc, char *argv[]){
 
 			total_ratio_height += ratio_height;
 			total_ratio_height_std += ratio_height*ratio_height;
-			total_ratio_counter++;
+			//total_ratio_counter++;
 
 			//getchar();
 			f->Close();
