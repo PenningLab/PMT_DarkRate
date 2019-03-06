@@ -248,7 +248,7 @@ int main(int argc, char *argv[]){
 		charge_pl->SetPointError(i,0,charge_ratio_std[i]);
 
 		height_pl->SetPoint(i,depth[i],height_ratio[i]);
-		height_pl->SetPointError(i,depth[i],height_ratio_std[i]);
+		height_pl->SetPointError(i,0,height_ratio_std[i]);
 	}
 
 
