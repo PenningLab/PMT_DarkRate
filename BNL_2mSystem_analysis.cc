@@ -203,7 +203,7 @@ int main(int argc, char *argv[]){
 			ratio_height_std -= ratio_height*ratio_height*ratio_counter;
 			ratio_height_std = sqrt(ratio_height_std/(ratio_counter-1));
 
-			cout<<"File : "<<measurement[i]<<" This is file : "<<j<<" it has ratio : "<<ratio<<" with std : "<<ratio_std<<endl;
+			//cout<<"File : "<<measurement[i]<<" This is file : "<<j<<" it has ratio : "<<ratio<<" with std : "<<ratio_std<<endl;
 
 			total_ratio += ratio;
 			total_ratio_std += ratio*ratio;
@@ -213,7 +213,7 @@ int main(int argc, char *argv[]){
 			total_ratio_height_std += ratio_height*ratio_height;
 			total_ratio_counter++;
 
-			getchar();
+			//getchar();
 			f->Close();
 		}
 
