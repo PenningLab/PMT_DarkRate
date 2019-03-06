@@ -146,12 +146,12 @@ int main(int argc, char *argv[]){
 				double temp_ratio = 0;
 				bool top_fire = false;
 				bool bottom_fire = false;
-				for (int ipulse=0;ipulse<QPE->size();ipulse++){
-					if (ptime->at(ipulse)>195&&ptime->at(ipulse)<203){
+				for (unsigned int ipulse=0;ipulse<QPE->size();ipulse++){
+					if (PeakTime->at(ipulse)>195&&PeakTime->at(ipulse)<203){
 						top_charge = QPE->at(ipulse);
 						top_fire = true;
 					}
-					if (ptime->at(ipulse)>210&&ptime->at(ipulse)<222){
+					if (PeakTime->at(ipulse)>210&&PeakTime->at(ipulse)<222){
 						bottom_charge = QPE->at(ipulse);
 						bottom_fire = true;
 						break;
