@@ -93,10 +93,18 @@ int main(int argc, char *argv[]){
 			infiledir = argv[i+1];
 		}
 	}
-	string measurement[2] = {"BNL_test_50ns_181_5cm_2_28_2019_1000_samples_10000_events","BNL_test_50ns_144_7cm_2_28_2019_1000_samples_10000_events"};
-	for (int i=0;i<2;i++){
+	string measurement[6] = {"BNL_test_50ns_0cm_2_28_2019_1000_samples_10000_events","BNL_test_50ns_38_0cm_2_28_2019_1000_samples_10000_events","BNL_test_50ns_73_0cm_2_28_2019_1000_samples_10000_events","BNL_test_50ns_144_7cm_2_28_2019_1000_samples_10000_events","BNL_test_50ns_181_5cm_2_28_2019_1000_samples_10000_events"};
+	vector<double> charge_ratio;
+	vector<double> height_ratio;
+	vector<double> charge_ratio_std;
+	vector<double> height_ratio_std;
+
+	double depth[6] = {0,38,73,144.7,181.5};
+	for (int i=0;i<6;i++){
 		double total_ratio = 0;
 		double total_ratio_std = 0;
+		double total_ratio_height = 0;
+		double total_ratio_height_std = 0;
 		double total_ratio_counter = 0;
 		//bool total_ratio_fire = false;
 		for (int j=0;j<number_files;j++){
@@ -132,6 +140,8 @@ int main(int argc, char *argv[]){
 
 			double ratio = 0;
 			double ratio_std = 0;
+			double ratio_height = 0;
+			double ratio_height_std = 0;
 			double ratio_counter = 0;
 
 			for (int ie=0;ie<event_tree->GetEntries();ie++){
@@ -148,17 +158,22 @@ int main(int argc, char *argv[]){
 				double top_charge = 0;
 				double bottom_charge = 0;
 				double temp_ratio = 0;
+				double top_height = 0;
+				double bottom_height = 0;
+				double temp_ratio_height = 0;
 				bool top_fire = false;
 				bool bottom_fire = false;
 				//cout<<" Ratio : "<<ratio<<endl;
 				for (unsigned int ipulse=0;ipulse<Height->size();ipulse++){
 					if (PeakTime->at(ipulse)>195&&PeakTime->at(ipulse)<203){
-						top_charge = Height->at(ipulse);
+						top_charge = QPE->at(ipulse);
+						top_height = Height->at(ipulse);
 						top_fire = true;
 						//cout<<" top charge : "<<top_charge<<endl;
 					}
 					if (PeakTime->at(ipulse)>210&&PeakTime->at(ipulse)<222){
-						bottom_charge = Height->at(ipulse);
+						bottom_charge = QPE->at(ipulse);
+						bottom_height = Height->at(ipulse);
 						bottom_fire = true;
 						//cout<<" bottom charge : "<<bottom_charge<<endl;
 						break;
@@ -166,8 +181,12 @@ int main(int argc, char *argv[]){
 				}
 				if (top_fire && bottom_fire){
 					temp_ratio = top_charge/bottom_charge;
+					temp_ratio_height = top_height/bottom_height;
 					ratio += temp_ratio;
 					ratio_std += temp_ratio*temp_ratio;
+
+					ratio_height += temp_ratio_height;
+					ratio_height_std += temp_ratio_height*temp_ratio_height;
 					ratio_counter ++;
 					//cout<<" temp_ratio : "<<temp_ratio<<endl;
 
@@ -179,27 +198,75 @@ int main(int argc, char *argv[]){
 			ratio /= ratio_counter;
 			ratio_std -= ratio*ratio*ratio_counter;
 			ratio_std = sqrt(ratio_std/(ratio_counter-1));
+
+			ratio_height /= ratio_counter;
+			ratio_height_std -= ratio_height*ratio_height*ratio_counter;
+			ratio_height_std = sqrt(ratio_height_std/(ratio_counter-1));
+
 			cout<<"File : "<<measurement[i]<<" This is file : "<<j<<" it has ratio : "<<ratio<<" with std : "<<ratio_std<<endl;
 
 			total_ratio += ratio;
 			total_ratio_std += ratio*ratio;
 			total_ratio_counter++;
 
+			total_ratio_height += ratio_height;
+			total_ratio_height_std += ratio_height*ratio_height;
+			total_ratio_counter++;
+
 			getchar();
-			//f.Close();
+			f->Close();
 		}
-		cout<<" total_ratio_counter : "<<total_ratio_counter<<" total_ratio_std :  "<<total_ratio_std<<endl;
+
 		total_ratio /= total_ratio_counter;
-		cout<<"total_ratio : "<<total_ratio<<endl;
 		total_ratio_std -= total_ratio*total_ratio*total_ratio_counter;
-		cout<<" total_ratio_std : "<<total_ratio_std<<endl;
 		total_ratio_std = sqrt(total_ratio_std/(total_ratio_counter-1));
+
+		total_ratio_height /= total_ratio_counter;
+		total_ratio_height_std -= total_ratio_height*total_ratio_height*total_ratio_counter;
+		total_ratio_height_std = sqrt(total_ratio_height_std/(total_ratio_counter-1));
+
 		cout<<"File : "<<measurement[i]<<" it has ratio : "<<total_ratio<<" with std : "<<total_ratio_std<<endl;
+		cout<<"File : "<<measurement[i]<<" it has height ratio : "<<total_ratio_height<<" with height std : "<<total_ratio_height_std<<endl;
+
+		charge_ratio.push_back(total_ratio);
+		charge_ratio_std.push_back(total_ratio_std);
+
+		height_ratio.push_back(total_ratio_height);
+		height_ratio_std.push_back(total_ratio_height_std);
+
 		getchar();
 
 
 	}
 
+	TFile* fout = new TFile(outfilename.c_str(),"RECREATE");
+	TGraphErrors *charge_pl = new TGraphErrors();
+	TGraphErrors *height_pl = new TGraphErrors();
+
+	for (int i=0;i<6;i++){
+		charge_pl->SetPoint(i,depth[i],charge_ratio[i]);
+		charge_pl->SetPointError(i,0,charge_ratio_std[i]);
+
+		height_pl->SetPoint(i,depth[i],height_ratio[i]);
+		height_pl->SetPointError(i,depth[i],height_ratio_std[i]);
+	}
+
+
+	TCanvas* charge_c = new TCanvas("charge_c","charge_c");
+	charge_pl->SetMarkerStyle(22);
+	charge_pl->SetMarkerColor(2);
+	charge_pl->Draw("AP");
+
+	TCanvas* height_c = new TCanvas("height_c","height_c");
+	height_pl->SetMarkerStyle(22);
+	height_pl->SetMarkerColor(2);
+	height_pl->Draw("AP");
+
+
+	charge_c->Write();
+	height_c->Write();
+	fout->Write();
+	fout->Close();
 
 
 
