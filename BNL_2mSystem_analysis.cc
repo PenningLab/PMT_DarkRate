@@ -179,7 +179,7 @@ int main(int argc, char *argv[]){
 			ratio /= ratio_counter;
 			ratio_std -= ratio*ratio*ratio_counter;
 			ratio_std = sqrt(ratio_std/(ratio_counter-1));
-			cout<<"File : "<<measurement[i]<<" This is file : "<<j<<" it has ratio : "<<total_ratio<<" with std : "<<total_ratio_std<<endl;
+			cout<<"File : "<<measurement[i]<<" This is file : "<<j<<" it has ratio : "<<ratio<<" with std : "<<ratio_std<<endl;
 
 			total_ratio += ratio;
 			total_ratio_std += ratio_std*ratio_std;
