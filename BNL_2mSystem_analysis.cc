@@ -150,17 +150,17 @@ int main(int argc, char *argv[]){
 				double temp_ratio = 0;
 				bool top_fire = false;
 				bool bottom_fire = false;
-				cout<<" Ratio : "<<ratio<<endl;
+				//cout<<" Ratio : "<<ratio<<endl;
 				for (unsigned int ipulse=0;ipulse<Height->size();ipulse++){
 					if (PeakTime->at(ipulse)>195&&PeakTime->at(ipulse)<203){
 						top_charge = Height->at(ipulse);
 						top_fire = true;
-						cout<<" top charge : "<<top_charge<<endl;
+						//cout<<" top charge : "<<top_charge<<endl;
 					}
 					if (PeakTime->at(ipulse)>210&&PeakTime->at(ipulse)<222){
 						bottom_charge = Height->at(ipulse);
 						bottom_fire = true;
-						cout<<" bottom charge : "<<bottom_charge<<endl;
+						//cout<<" bottom charge : "<<bottom_charge<<endl;
 						break;
 					}
 				}
@@ -169,7 +169,7 @@ int main(int argc, char *argv[]){
 					ratio += temp_ratio;
 					ratio_std += temp_ratio*temp_ratio;
 					ratio_counter ++;
-					cout<<" temp_ratio : "<<temp_ratio<<endl;
+					//cout<<" temp_ratio : "<<temp_ratio<<endl;
 
 				}
 
@@ -188,9 +188,11 @@ int main(int argc, char *argv[]){
 			getchar();
 			//f.Close();
 		}
-
+		cout<<" total_ratio_counter : "<<total_ratio_counter<<endl;
 		total_ratio /= total_ratio_counter;
+		cout<<"total_ratio : "<<total_ratio<<endl;
 		total_ratio_std -= total_ratio*total_ratio*total_ratio_counter;
+		cout<<" total_ratio_std : "<<total_ratio_std<<endl;
 		total_ratio_std = sqrt(total_ratio_std/(total_ratio_counter-1));
 		cout<<"File : "<<measurement[i]<<" it has ratio : "<<total_ratio<<" with std : "<<total_ratio_std<<endl;
 		getchar();
