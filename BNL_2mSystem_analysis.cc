@@ -184,6 +184,7 @@ int main(int argc, char *argv[]){
 				total_ratio_std += ratio_std*ratio_std;
 				total_ratio_counter++;
 			}
+			getchar();
 			//f.Close();
 		}
 
