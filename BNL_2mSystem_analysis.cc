@@ -93,7 +93,7 @@ int main(int argc, char *argv[]){
 			infiledir = argv[i+1];
 		}
 	}
-	string measurement[6] = {"BNL_test_50ns_0cm_2_28_2019_1000_samples_10000_events","BNL_test_50ns_38_0cm_2_28_2019_1000_samples_10000_events","BNL_test_50ns_73_0cm_2_28_2019_1000_samples_10000_events","BNL_test_50ns_144_7cm_2_28_2019_1000_samples_10000_events","BNL_test_50ns_181_5cm_2_28_2019_1000_samples_10000_events"};
+	string measurement[6] = {"BNL_test_50ns_0cm_2_28_2019_1000_samples_10000_events","BNL_test_50ns_38_0cm_2_28_2019_1000_samples_10000_events","BNL_test_50ns_73_0cm_2_28_2019_1000_samples_10000_events","BNL_test_50ns_108_5cm_2_28_2019_1000_samples_10000_events","BNL_test_50ns_144_7cm_2_28_2019_1000_samples_10000_events","BNL_test_50ns_181_5cm_2_28_2019_1000_samples_10000_events"};
 	vector<double> charge_ratio;
 	vector<double> height_ratio;
 	vector<double> charge_ratio_std;
