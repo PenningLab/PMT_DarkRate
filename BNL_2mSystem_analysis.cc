@@ -150,6 +150,7 @@ int main(int argc, char *argv[]){
 				double temp_ratio = 0;
 				bool top_fire = false;
 				bool bottom_fire = false;
+				cout<<" Ratio : "<<ratio<<endl;
 				for (unsigned int ipulse=0;ipulse<Height->size();ipulse++){
 					if (PeakTime->at(ipulse)>195&&PeakTime->at(ipulse)<203){
 						top_charge = Height->at(ipulse);
