@@ -182,7 +182,7 @@ int main(int argc, char *argv[]){
 			cout<<"File : "<<measurement[i]<<" This is file : "<<j<<" it has ratio : "<<ratio<<" with std : "<<ratio_std<<endl;
 
 			total_ratio += ratio;
-			total_ratio_std += ratio_std*ratio_std;
+			total_ratio_std += ratio*ratio;
 			total_ratio_counter++;
 
 			getchar();
