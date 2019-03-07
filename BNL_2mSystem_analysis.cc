@@ -262,13 +262,17 @@ int main(int argc, char *argv[]){
 	charge_pl->Draw("AP");
 
 	TCanvas* height_c = new TCanvas("height_c","height_c");
-	height_pl->SetMarkerStyle(22);
-	height_pl->SetMarkerColor(2);
+	height_pl->SetMarkerStyle(23);
+	height_pl->SetMarkerColor(4);
 	height_pl->Draw("AP");
 
+	TCanvas* charge_height_c = new TCanvas("charge_height_c","charge_height_c");
+	charge_pl->Draw("AP");
+	height_pl->Draw("P");
 
 	charge_c->Write();
 	height_c->Write();
+	charge_height_c->Write();
 	fout->Write();
 	fout->Close();
 
