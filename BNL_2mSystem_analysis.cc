@@ -110,8 +110,8 @@ int main(int argc, char *argv[]){
 		double total_ratio_counter = 0;
 		//bool total_ratio_fire = false;
 		for (int j=0;j<number_files;j++){
-			if (i==1 && j>20)
-				break;
+			//if (i==1 && j>20)
+			//	break;
 			char filename[200];
 			sprintf(filename,"%s/%s/%u_PMT_Trigger.root",infiledir.c_str(),measurement[i].c_str(),j);
 			TFile* f = new TFile(filename,"READ");
