@@ -927,7 +927,7 @@ int main(int argc, char *argv[]){
     cout<<" Total sweeps is : "<<Nevts<<endl;
 
 	nosinfo->Write("Nsamples");
-	wforms_tree->Write();
+	//wforms_tree->Write();
     pulse->Write();
 	event->Write();
     bplot->Write();
