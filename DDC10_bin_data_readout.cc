@@ -824,6 +824,7 @@ int main(int argc, char *argv[]){
         }
 
 		event_baseline.push_back(rms_value);
+        float event_charge_number = event_charge[0];
 		event_rms.push_back(thisbase);
 		//event_time.push_back(number_of_samples);
 		baseline_sweep.push_back(rms_value);// save baseline for checking baseline shifting
