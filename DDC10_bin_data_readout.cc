@@ -61,6 +61,7 @@ bool rolling = false;
 bool triangle = false;
 bool boxsmoothing = false;
 bool use_basefile = false;
+TTree* event;
 
 //define pulse finding parameters
 double pulseThresh = 8.0 ;
@@ -171,6 +172,8 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
 	double temp_charge = 0;
     double temp_ten_charge = 0;
     double pulse_height_thresh = pth*rms;
+    event_charge_ten.clear();
+    event_charge.clear();
     //cout<<" vector size is : "<<v.size()<<endl;
     //getchar();
     //Let's looking for the Pulses
@@ -749,14 +752,20 @@ int main(int argc, char *argv[]){
 	else
     	pulse = new TNtuple("pulse","pulse","pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:sweep:bigstep:pulseLength5:pulseLength25:pulseLength50:pulseLength75:pulseLength80:pulseLength90:pulseLength95:pulseLength99");
 
-	TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms:npulses");
-	TTree *wforms_tree = new TTree("waveforms","Waveform Tree");
+	//TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms:npulses");
+    TTree* event = new TTree("event","event info");
+    event->Branch("charge",&event_charge);
+    event->Branch("baseline",&event_baseline);
+    event->Branch("rms",&event_rms);
+    event->Branch("npulses",&npeaks);
+	//TTree *wforms_tree = new TTree("waveforms","Waveform Tree");
 	float waveforms[8192];
 	float trigger_t;
 
-	wforms_tree->Branch("pmt_waveforms",&waveforms[0],TString::Format("waveforms[%i]/F",number_of_samples));
+	//wforms_tree->Branch("pmt_waveforms",&waveforms[0],TString::Format("waveforms[%i]/F",number_of_samples));
+    event->Branch("pmt_waveforms",&waveforms[0],TString::Format("waveforms[%i]/F",number_of_samples));
 	if (use_trigger)
-		wforms_tree->Branch("trigger_time",&trigger_t,"trigger_t/F");
+		event->Branch("trigger_time",&trigger_t,"trigger_t/F");
     // Store the waveform plot for debugging
     TCanvas *waveplot[100];
     vector<double> baseline_sweep;
@@ -795,7 +804,7 @@ int main(int argc, char *argv[]){
 		getwaveform(raw_waveform,wform_channel,lastadd,(invert_waveform ? -1.0 : 1.0));
 
 		std::copy(raw_waveform.begin(),raw_waveform.end(),waveforms);
-		wforms_tree->Fill();
+		//wforms_tree->Fill();
 		number_of_peaks = 0.0;
 		double thisbase = (use_basefile ? fixedrms : 0);
 
@@ -809,10 +818,10 @@ int main(int argc, char *argv[]){
 			extract_event(raw_waveform,rms_value,thisbase,number_of_samples,(use_trigger ? trigger_t : 0));
   		}
 
-    if (debug_mode){
-      cout<<" basline is  : "<<rms_value<<" rms is : "<<thisbase<<endl;
-      getchar();
-    }
+        if (debug_mode){
+            cout<<" basline is  : "<<rms_value<<" rms is : "<<thisbase<<endl;
+            getchar();
+        }
 
 		event_baseline.push_back(rms_value);
 		event_rms.push_back(thisbase);
@@ -821,6 +830,10 @@ int main(int argc, char *argv[]){
 		dark_hits->Fill(number_of_peaks);
 		npeaks.push_back(number_of_peaks);
 		baselinev.clear();
+        event->Fill();
+        event_baseline.clear();
+		event_rms.clear();
+		npeaks.clear();
 		//fill canvases
 		if(sweep<100){
 			t11 = new TGraph();
@@ -899,9 +912,9 @@ int main(int argc, char *argv[]){
     for (int i=0;i<baseline_sweep.size();i++){
         baseline_plot->SetPoint(i,i,baseline_sweep[i]);
     }
-    for (int i=0;i<event_charge.size();i++){
-      event->Fill(event_charge[i],event_charge_ten[i],event_baseline[i],event_rms[i],npeaks[i]);
-    }
+    //for (int i=0;i<event_charge.size();i++){
+      //event->Fill(event_charge[i],event_charge_ten[i],event_baseline[i],event_rms[i],npeaks[i]);
+    //}
 
     //Baseline plot
     TCanvas* bplot = new TCanvas("bplot","bplot");
