@@ -754,10 +754,10 @@ int main(int argc, char *argv[]){
 
 	//TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms:npulses");
     TTree* event = new TTree("event","event info");
-    event->Branch("charge",&event_charge);
-    event->Branch("baseline",&event_baseline);
-    event->Branch("rms",&event_rms);
-    event->Branch("npulses",&npeaks);
+    event->Branch("charge",&event_charge_number,"event_charge/F");
+    event->Branch("baseline",&rms_value,"rms_value/F");
+    event->Branch("rms",&thisbase,"thisbase/F");
+    event->Branch("npulses",&number_of_peaks,"number_of_peaks/F");
 	//TTree *wforms_tree = new TTree("waveforms","Waveform Tree");
 	float waveforms[8192];
 	float trigger_t;
