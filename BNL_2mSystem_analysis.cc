@@ -100,6 +100,9 @@ int main(int argc, char *argv[]){
 	vector<double> charge_ratio_std;
 	vector<double> height_ratio_std;
 
+	TH1F *ratio_q[6];
+	TH1F *ratio_h[6];
+
 	//double depth[6] = {0,38,73,108.5,144.7,181.5};
 	double depth[6] = {0,35,74.7,102.4,147.1,180.8};
 	for (int i=0;i<6;i++){
@@ -117,6 +120,13 @@ int main(int argc, char *argv[]){
 			TFile* f = new TFile(filename,"READ");
 			TTree* event_tree;
 			f->GetObject("event",event_tree);
+
+			char runname_q[30];
+			char runname_h[30];
+			sprintf(runname_q,"%s_chargeRatio",measurement[i]);
+			sprintf(runname_h,"%s_heightRatio",measurement[i]);
+			ratio_q[i] = new TH1F(runname_q,"",100,0,10);
+			ratio_h[i] = new TH1F(runname_h,"",100,0,10);
 
 			vector<double> *charge = 0;
 			vector<double> *charge_frac = 0;
@@ -193,7 +203,8 @@ int main(int argc, char *argv[]){
 					ratio_height_std += temp_ratio_height*temp_ratio_height;
 					ratio_counter ++;
 					//cout<<" temp_ratio : "<<temp_ratio<<endl;
-
+					ratio_q[i]->Fill(temp_ratio);
+					ratio_h[i]->Fill(temp_ratio_height);
 				}
 
 
@@ -216,6 +227,7 @@ int main(int argc, char *argv[]){
 			total_ratio_height += ratio_height;
 			total_ratio_height_std += ratio_height*ratio_height;
 			//total_ratio_counter++;
+
 
 			//getchar();
 			f->Close();
