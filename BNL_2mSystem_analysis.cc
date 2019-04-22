@@ -267,7 +267,7 @@ int main(int argc, char *argv[]){
 
 	}
 
-
+	fout->cd();
 	TGraphErrors *charge_pl = new TGraphErrors();
 	TGraphErrors *height_pl = new TGraphErrors();
 
