@@ -121,8 +121,8 @@ int main(int argc, char *argv[]){
 			TTree* event_tree;
 			f->GetObject("event",event_tree);
 
-			char runname_q[30];
-			char runname_h[30];
+			char* runname_q = new char[30];
+			char* runname_h = new char[30];
 			sprintf(runname_q,"%s_chargeRatio",measurement[i]);
 			sprintf(runname_h,"%s_heightRatio",measurement[i]);
 			ratio_q[i] = new TH1F(runname_q,"",100,0,10);
