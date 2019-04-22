@@ -121,8 +121,8 @@ int main(int argc, char *argv[]){
 			TTree* event_tree;
 			f->GetObject("event",event_tree);
 
-			char* runname_q = new char[30];
-			char* runname_h = new char[30];
+			char* runname_q = new char[100];
+			char* runname_h = new char[100];
 			sprintf(runname_q,"%s_chargeRatio",measurement[i].c_str());
 			sprintf(runname_h,"%s_heightRatio",measurement[i].c_str());
 			cout<<" This is corruption ? "<<endl;
