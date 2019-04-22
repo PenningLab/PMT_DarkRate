@@ -100,8 +100,22 @@ int main(int argc, char *argv[]){
 	vector<double> charge_ratio_std;
 	vector<double> height_ratio_std;
 
-	TH1F *ratio_q[6];
-	TH1F *ratio_h[6];
+	vector<TH1F*> ratio_q;
+	vector<TH1F*> ratio_h;
+
+	for (int i=0;i<6;i++){
+		char runname_q[100] ;
+		char runname_h[100] ;
+		sprintf(runname_q,"%s_chargeRatio",measurement[i].c_str());
+		sprintf(runname_h,"%s_heightRatio",measurement[i].c_str());
+		//cout<<" This is corruption ? "<<endl;
+		TH1F* h = new TH1F(runname_q,"",100,0,10);
+		TH1F* h2 = new TH1F(runname_h,"",100,0,10);
+
+		ratio_q.push_back(h);
+		ratio_h.push_back(h2);
+
+	}
 
 	//double depth[6] = {0,38,73,108.5,144.7,181.5};
 	double depth[6] = {0,35,74.7,102.4,147.1,180.8};
@@ -121,13 +135,9 @@ int main(int argc, char *argv[]){
 			TTree* event_tree;
 			f->GetObject("event",event_tree);
 
-			char* runname_q = new char[100];
-			char* runname_h = new char[100];
-			sprintf(runname_q,"%s_chargeRatio",measurement[i].c_str());
-			sprintf(runname_h,"%s_heightRatio",measurement[i].c_str());
-			cout<<" This is corruption ? "<<endl;
-			ratio_q[i] = new TH1F(runname_q,"",100,0,10);
-			ratio_h[i] = new TH1F(runname_h,"",100,0,10);
+
+			//ratio_q[i] = new TH1F(runname_q,"",100,0,10);
+			//ratio_h[i] = new TH1F(runname_h,"",100,0,10);
 
 			vector<double> *charge = 0;
 			vector<double> *charge_frac = 0;
