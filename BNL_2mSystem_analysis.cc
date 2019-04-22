@@ -113,8 +113,8 @@ int main(int argc, char *argv[]){
 		sprintf(runname_h,"%s_heightRatio",measurement[i].c_str());
 		char runname_q_2d[100] ;
 		char runname_h_2d[100] ;
-		sprintf(runname_q_2d,"%s_chargeRatio",measurement[i].c_str());
-		sprintf(runname_h_2d,"%s_heightRatio",measurement[i].c_str());
+		sprintf(runname_q_2d,"%s_chargeRatio_2d",measurement[i].c_str());
+		sprintf(runname_h_2d,"%s_heightRatio_2d",measurement[i].c_str());
 		//cout<<" This is corruption ? "<<endl;
 		TH1F* h = new TH1F(runname_q,"",100,0,10);
 		TH1F* h2 = new TH1F(runname_h,"",100,0,10);
