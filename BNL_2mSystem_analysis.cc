@@ -103,18 +103,29 @@ int main(int argc, char *argv[]){
 
 	vector<TH1F*> ratio_q;
 	vector<TH1F*> ratio_h;
+	vector<TH2F*> charge_dis;
+	vector<TH2F*> height_dis;
 
 	for (int i=0;i<6;i++){
 		char runname_q[100] ;
 		char runname_h[100] ;
 		sprintf(runname_q,"%s_chargeRatio",measurement[i].c_str());
 		sprintf(runname_h,"%s_heightRatio",measurement[i].c_str());
+		char runname_q_2d[100] ;
+		char runname_h_2d[100] ;
+		sprintf(runname_q_2d,"%s_chargeRatio",measurement[i].c_str());
+		sprintf(runname_h_2d,"%s_heightRatio",measurement[i].c_str());
 		//cout<<" This is corruption ? "<<endl;
 		TH1F* h = new TH1F(runname_q,"",100,0,10);
 		TH1F* h2 = new TH1F(runname_h,"",100,0,10);
 
+		TH2F* h3 = new TH2F(runname_q_2d,"",1000,0,100,1000,0,100);
+		TH2F* h4 = new TH2F(runname_h_2d,"",1000,0,1,1000,0,1);
+
 		ratio_q.push_back(h);
 		ratio_h.push_back(h2);
+		charge_dis.push_back(h3);
+		height_dis.push_back(h4);
 
 	}
 
@@ -211,10 +222,13 @@ int main(int argc, char *argv[]){
 					ratio += temp_ratio;
 					ratio_std += temp_ratio*temp_ratio;
 
+					charge_dis[i]->Fill(top_charge,bottom_charge);
+
 					ratio_height += temp_ratio_height;
 					ratio_height_std += temp_ratio_height*temp_ratio_height;
 					ratio_counter ++;
 					//cout<<" temp_ratio : "<<temp_ratio<<endl;
+					height_dis[i]->Fill(top_height,bottom_height);
 					ratio_q[i]->Fill(temp_ratio);
 					ratio_h[i]->Fill(temp_ratio_height);
 				}
