@@ -125,6 +125,7 @@ int main(int argc, char *argv[]){
 			char* runname_h = new char[30];
 			sprintf(runname_q,"%s_chargeRatio",measurement[i].c_str());
 			sprintf(runname_h,"%s_heightRatio",measurement[i].c_str());
+			cout<<" This is corruption ? "<<endl;
 			ratio_q[i] = new TH1F(runname_q,"",100,0,10);
 			ratio_h[i] = new TH1F(runname_h,"",100,0,10);
 
