@@ -119,7 +119,7 @@ int main(int argc, char *argv[]){
 		TH1F* h = new TH1F(runname_q,"",100,0,10);
 		TH1F* h2 = new TH1F(runname_h,"",100,0,10);
 
-		TH2F* h3 = new TH2F(runname_q_2d,"",1000,0,100,1000,0,100);
+		TH2F* h3 = new TH2F(runname_q_2d,"",2000,0,500,2000,0,500);
 		TH2F* h4 = new TH2F(runname_h_2d,"",1000,0,1,1000,0,1);
 
 		ratio_q.push_back(h);
