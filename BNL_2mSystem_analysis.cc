@@ -108,6 +108,12 @@ int main(int argc, char *argv[]){
 	vector<TH2F*> charge_dis;
 	vector<TH2F*> height_dis;
 
+	TCanvas* ratio_time[6];
+	TGraphErrors* RPlot[6];
+
+
+
+
 	for (int i=0;i<6;i++){
 		char runname_q[100] ;
 		char runname_h[100] ;
@@ -139,6 +145,7 @@ int main(int argc, char *argv[]){
 		double total_ratio_height = 0;
 		double total_ratio_height_std = 0;
 		double total_ratio_counter = 0;
+		RPlot[i] = new TGraphErrors;
 		//bool total_ratio_fire = false;
 		for (int j=0;j<number_files;j++){
 			if (i==1 && j>9)
@@ -256,7 +263,8 @@ int main(int argc, char *argv[]){
 			total_ratio_height_std += ratio_height*ratio_height;
 			//total_ratio_counter++;
 
-
+			RPlot[i]->SetPoint(j,j,ratio);
+			RPlot[i]->SetPointError(j,0,ratio_std);
 			//getchar();
 			f->Close();
 		}
@@ -277,6 +285,15 @@ int main(int argc, char *argv[]){
 
 		height_ratio.push_back(total_ratio_height);
 		height_ratio_std.push_back(total_ratio_height_std);
+
+		char plotname[30];
+		sprintf(plotname,"Ratio_plot_%u",i);
+		ratio_time[i] = new TCanvas(plotname);
+		RPlot[i]->SetMakerStyle(3);
+		RPlot[i]->SetMarkerSize(3);
+		RPlot[i]->Draw("AP");
+
+		ratio_time[i]->Write();
 
 		//getchar();
 
