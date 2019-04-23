@@ -145,6 +145,7 @@ int main(int argc, char *argv[]){
 		double total_ratio_height = 0;
 		double total_ratio_height_std = 0;
 		double total_ratio_counter = 0;
+		//double plotcounter = 0;
 		RPlot[i] = new TGraphErrors;
 		//bool total_ratio_fire = false;
 		for (int j=0;j<number_files;j++){
@@ -266,6 +267,7 @@ int main(int argc, char *argv[]){
 			RPlot[i]->SetPoint(j,j,ratio);
 			RPlot[i]->SetPointError(j,0,ratio_std);
 			//getchar();
+			//plotcounter ++;
 			f->Close();
 		}
 
@@ -286,12 +288,7 @@ int main(int argc, char *argv[]){
 		height_ratio.push_back(total_ratio_height);
 		height_ratio_std.push_back(total_ratio_height_std);
 
-		char plotname[30];
-		sprintf(plotname,"Ratio_plot_%u",i);
-		ratio_time[i] = new TCanvas(plotname);
-		RPlot[i]->SetMarkerStyle(3);
-		RPlot[i]->SetMarkerSize(3);
-		RPlot[i]->Draw("AP");
+
 
 		ratio_time[i]->Write();
 
@@ -301,6 +298,7 @@ int main(int argc, char *argv[]){
 	}
 
 	fout->cd();
+
 	TGraphErrors *charge_pl = new TGraphErrors();
 	TGraphErrors *height_pl = new TGraphErrors();
 
@@ -310,6 +308,13 @@ int main(int argc, char *argv[]){
 
 		height_pl->SetPoint(i,depth[i],height_ratio[i]);
 		height_pl->SetPointError(i,0,height_ratio_std[i]);
+
+		char plotname[30];
+		sprintf(plotname,"Ratio_plot_%u",i);
+		ratio_time[i] = new TCanvas(plotname);
+		RPlot[i]->SetMarkerStyle(3);
+		RPlot[i]->SetMarkerSize(3);
+		RPlot[i]->Draw("AP");
 	}
 
 
