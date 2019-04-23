@@ -290,7 +290,7 @@ int main(int argc, char *argv[]){
 
 
 
-		ratio_time[i]->Write();
+
 
 		//getchar();
 
@@ -315,6 +315,7 @@ int main(int argc, char *argv[]){
 		RPlot[i]->SetMarkerStyle(3);
 		RPlot[i]->SetMarkerSize(3);
 		RPlot[i]->Draw("AP");
+		ratio_time[i]->Write();
 	}
 
 
