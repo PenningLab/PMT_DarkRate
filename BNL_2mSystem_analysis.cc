@@ -289,7 +289,7 @@ int main(int argc, char *argv[]){
 		char plotname[30];
 		sprintf(plotname,"Ratio_plot_%u",i);
 		ratio_time[i] = new TCanvas(plotname);
-		RPlot[i]->SetMakerStyle(3);
+		RPlot[i]->SetMarkerStyle(3);
 		RPlot[i]->SetMarkerSize(3);
 		RPlot[i]->Draw("AP");
 
