@@ -377,7 +377,7 @@ int main(int argc, char *argv[]){
 
 		char plotname2[30];
 		sprintf(plotname2,"Top_charge_plot_%u",i);
-		top_charge_time[i] = new TCanvas(plotname);
+		top_charge_time[i] = new TCanvas(plotname2);
 		TOPlot_charge[i]->SetMarkerStyle(3);
 		TOPlot_charge[i]->SetMarkerSize(3);
 		TOPlot_charge[i]->Draw("AP");
@@ -385,7 +385,7 @@ int main(int argc, char *argv[]){
 
 		char plotname3[30];
 		sprintf(plotname3,"Bottom_charge_plot_%u",i);
-		bottom_charge_time[i] = new TCanvas(plotname);
+		bottom_charge_time[i] = new TCanvas(plotname3);
 		BOTTOMlot_charge[i]->SetMarkerStyle(3);
 		BOTTOMlot_charge[i]->SetMarkerSize(3);
 		BOTTOMlot_charge[i]->Draw("AP");
@@ -393,19 +393,19 @@ int main(int argc, char *argv[]){
 
 		char plotname4[30];
 		sprintf(plotname4,"Top_height_plot_%u",i);
-		top_height_time[i] = new TCanvas(plotname);
+		top_height_time[i] = new TCanvas(plotname4);
 		TOPlot_height[i]->SetMarkerStyle(3);
 		TOPlot_height[i]->SetMarkerSize(3);
 		TOPlot_height[i]->Draw("AP");
 		top_height_time[i]->Write();
 
-		char plotname[30];
-		sprintf(plotname,"Ratio_plot_%u",i);
-		ratio_time[i] = new TCanvas(plotname);
-		RPlot[i]->SetMarkerStyle(3);
-		RPlot[i]->SetMarkerSize(3);
-		RPlot[i]->Draw("AP");
-		ratio_time[i]->Write();
+		char plotname5[30];
+		sprintf(plotname5,"Bottom_height_plot_%u",i);
+		bottom_height_time[i] = new TCanvas(plotname5);
+		BOTTOMlot_height[i]->SetMarkerStyle(3);
+		BOTTOMlot_height[i]->SetMarkerSize(3);
+		BOTTOMlot_height[i]->Draw("AP");
+		bottom_height_time[i]->Write();
 	}
 
 
