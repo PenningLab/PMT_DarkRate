@@ -213,7 +213,7 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
 					cout<<" This is event : "<<counter<<"Left is  : "<<left<<" integral is : "<<integral<<" eThresh is : "<<eThresh<<endl;
 					getchar();
 				}
-                if (left == 206)
+                if (left == 200)
                     break;
 
             }
@@ -232,7 +232,7 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
     					cout<<" This is event : "<<counter<<"Right is  : "<<right<<" integral is : "<<integral<<" eThresh is : "<<eThresh<<endl;
     					getchar();
     				}
-                    if (right == 208)
+                    if (right == 202)
                         break;
                 }
                 end = true ;
