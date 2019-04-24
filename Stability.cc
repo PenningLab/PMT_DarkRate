@@ -109,8 +109,16 @@ int main(int argc, char *argv[]){
 	vector<TH2F*> height_dis;
 
 	TCanvas* ratio_time[number_files];
-	TGraphErrors* RPlot[number_files];
+	TCanvas* top_charge_time[number_files];
+	TCanvas* bottom_charge_time[number_files];
+	TCanvas* top_height_time[number_files];
+	TCanvas* bottom_height_time[number_files];
 
+	TGraphErrors* RPlot[number_files];
+	TGraphErrors* TOPlot_charge[number_files];
+	TGraphErrors* BOTTOMlot_charge[number_files];
+	TGraphErrors* TOPlot_height[number_files];
+	TGraphErrors* BOTTOMlot_height[number_files];
 
 
 
@@ -147,6 +155,10 @@ int main(int argc, char *argv[]){
 		double total_ratio_counter = 0;
 		//double plotcounter = 0;
 		RPlot[i] = new TGraphErrors;
+		TOPlot_charge[i] = new TGraphErrors;
+		BOTTOMlot_charge[i] = new TGraphErrors;
+		TOPlot_height[i] = new TGraphErrors;
+		BOTTOMlot_height[i] = new TGraphErrors;
 		//bool total_ratio_fire = false;
 		for (int j=0;j<run_number[i];j++){
 			//if (i==1 && j>9)
@@ -190,6 +202,14 @@ int main(int argc, char *argv[]){
 			double ratio_height = 0;
 			double ratio_height_std = 0;
 			double ratio_counter = 0;
+			double top_charge_avg = 0;
+			double bottom_charge_avg = 0;
+			double top_height_avg = 0;
+			double bottom_height_avg = 0;
+			double top_charge_std = 0;
+			double bottom_charge_std = 0;
+			double top_height_std = 0;
+			double bottom_height_std = 0;
 
 			for (int ie=0;ie<event_tree->GetEntries();ie++){
 				Long64_t tentry = event_tree->LoadTree(ie);
@@ -241,6 +261,16 @@ int main(int argc, char *argv[]){
 					height_dis[i]->Fill(top_height,bottom_height);
 					ratio_q[i]->Fill(temp_ratio);
 					ratio_h[i]->Fill(temp_ratio_height);
+
+					top_charge_avg += top_charge;
+					bottom_charge_avg += bottom_charge;
+					top_height_avg += top_height;
+					bottom_height_avg += bottom_height;
+
+					top_charge_std += top_charge*top_charge;
+					bottom_charge_std += bottom_charge*bottom_charge;
+					top_height_std += top_height*top_height;
+					bottom_height_std += bottom_height*bottom_height;
 				}
 
 
@@ -254,6 +284,34 @@ int main(int argc, char *argv[]){
 			ratio_height_std -= ratio_height*ratio_height*ratio_counter;
 			ratio_height_std = sqrt(ratio_height_std/(ratio_counter-1));
 
+			top_charge_avg /= ratio_counter;
+			bottom_charge_avg /= ratio_counter;
+			top_height_avg /= ratio_counter;
+			bottom_height_avg /= ratio_counter;
+
+			top_charge_std -= top_charge_avg*top_charge_avg*ratio_counter;
+			top_charge_std = sqrt(top_charge_std/(ratio_counter-1));
+
+			bottom_charge_std -= bottom_charge_avg*bottom_charge_avg*ratio_counter;
+			bottom_charge_std = sqrt(bottom_charge_std/(ratio_counter-1));
+
+			top_height_std -= top_height_avg*top_height_avg*ratio_counter;
+			top_height_std = sqrt(top_height_std/(ratio_counter-1));
+
+			bottom_height_std -= bottom_height_avg*bottom_height_avg*ratio_counter;
+			bottom_height_std = sqrt(bottom_height_std/(ratio_counter-1));
+
+			TOPlot_charge[i]->SetPoint(j,j,top_charge_avg);
+			TOPlot_charge[i]->SetPointError(j,0,top_charge_std);
+
+			BOTTOMlot_charge[i]->SetPoint(j,j,top_charge_avg);
+			BOTTOMlot_charge[i]->SetPointError(j,0,bottom_charge_std);
+
+			TOPlot_height[i]->SetPoint(j,j,top_height_avg);
+			TOPlot_height[i]->SetPointError(j,0,top_height_std);
+
+			BOTTOMlot_height[i]->SetPoint(j,j,bottom_height_avg);
+			BOTTOMlot_height[i]->SetPointError(j,0,bottom_height_std);
 			//cout<<"File : "<<measurement[i]<<" This is file : "<<j<<" it has ratio : "<<ratio<<" with std : "<<ratio_std<<endl;
 
 			total_ratio += ratio;
@@ -308,6 +366,38 @@ int main(int argc, char *argv[]){
 
 		height_pl->SetPoint(i,depth[i],height_ratio[i]);
 		height_pl->SetPointError(i,0,height_ratio_std[i]);
+
+		char plotname[30];
+		sprintf(plotname,"Ratio_plot_%u",i);
+		ratio_time[i] = new TCanvas(plotname);
+		RPlot[i]->SetMarkerStyle(3);
+		RPlot[i]->SetMarkerSize(3);
+		RPlot[i]->Draw("AP");
+		ratio_time[i]->Write();
+
+		char plotname2[30];
+		sprintf(plotname2,"Top_charge_plot_%u",i);
+		top_charge_time[i] = new TCanvas(plotname);
+		TOPlot_charge[i]->SetMarkerStyle(3);
+		TOPlot_charge[i]->SetMarkerSize(3);
+		TOPlot_charge[i]->Draw("AP");
+		top_charge_time[i]->Write();
+
+		char plotname3[30];
+		sprintf(plotname3,"Bottom_charge_plot_%u",i);
+		bottom_charge_time[i] = new TCanvas(plotname);
+		BOTTOMlot_charge[i]->SetMarkerStyle(3);
+		BOTTOMlot_charge[i]->SetMarkerSize(3);
+		BOTTOMlot_charge[i]->Draw("AP");
+		bottom_charge_time[i]->Write();
+
+		char plotname4[30];
+		sprintf(plotname4,"Top_height_plot_%u",i);
+		top_height_time[i] = new TCanvas(plotname);
+		TOPlot_height[i]->SetMarkerStyle(3);
+		TOPlot_height[i]->SetMarkerSize(3);
+		TOPlot_height[i]->Draw("AP");
+		top_height_time[i]->Write();
 
 		char plotname[30];
 		sprintf(plotname,"Ratio_plot_%u",i);
