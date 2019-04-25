@@ -237,7 +237,7 @@ void extract_event(vector<float> &v, double b ,double rms,int nos,int trigger,bo
                 }
                 end = true ;
                 int r = right;
-                while (r < fmin((int)v.size()-1, right+lookforward) && right !=208){
+                while (r < fmin((int)v.size()-1, right+lookforward) && right !=202){
                     r++ ;
                     integral = SimpsIntegral(v,b,r-windowSize,r);
                     if (integral > pThresh){
