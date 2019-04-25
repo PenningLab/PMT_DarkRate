@@ -705,14 +705,6 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  if (wform_channel >= Nchannels || wform_channel < 0 ||
-      ((trig_channel >= Nchannels || trig_channel < 0) && use_trigger)) {
-    cout << "Channel numbers given do not match file header, double check your "
-            "inputs."
-         << endl;
-    return -1;
-  }
-
   // Plots for debugging pulse finding algorithm
   TGraph *t11;
   TGraph *t22;
