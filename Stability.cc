@@ -235,13 +235,25 @@ int main(int argc, char *argv[]){
 					if (PeakTime->at(ipulse)>195&&PeakTime->at(ipulse)<203){
 						top_charge = QPE->at(ipulse);
 						top_height = Height->at(ipulse);
-						top_fire = true;
+						//top_fire = true;
+						if ((Height->at(ipulse)/(end->at(ipulse)-start->at(ipulse))>15) || (Height->at(ipulse)/(end->at(ipulse)-start->at(ipulse))<10)){
+							top_fire = false;
+						}
+						else{
+							top_fire = true;
+						}
 						//cout<<" top charge : "<<top_charge<<endl;
 					}
 					if (PeakTime->at(ipulse)>210&&PeakTime->at(ipulse)<222){
 						bottom_charge = QPE->at(ipulse);
 						bottom_height = Height->at(ipulse);
-						bottom_fire = true;
+						//bottom_fire = true;
+						if ((Height->at(ipulse)/(end->at(ipulse)-start->at(ipulse))>15) || (Height->at(ipulse)/(end->at(ipulse)-start->at(ipulse))<10)){
+							bottom_fire = false;
+						}
+						else{
+							bottom_fire = true;
+						}
 						//cout<<" bottom charge : "<<bottom_charge<<endl;
 						break;
 					}
