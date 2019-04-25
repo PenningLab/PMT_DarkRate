@@ -779,7 +779,8 @@ int main(int argc, char *argv[]) {
 
     signal_start = true;
     getwaveformtd(raw_waveform, (invert_waveform ? -1.0 : 1.0));
-
+    std::cout << "Read Waveform with " << raw_waveform.size() << " samples"
+              << std::endl;
     std::copy(raw_waveform.begin(), raw_waveform.end(), waveforms);
     wforms_tree->Fill();
     number_of_peaks = 0.0;
