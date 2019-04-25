@@ -95,9 +95,9 @@ int main(int argc, char *argv[]){
 	}
 	TFile* fout = new TFile(outfilename.c_str(),"RECREATE");
 	//string measurement[6] = {"BNL_test_50ns_0cm_2_28_2019_1000_samples_10000_events","BNL_test_50ns_38_0cm_2_28_2019_1000_samples_10000_events","BNL_test_50ns_73_0cm_2_28_2019_1000_samples_10000_events","BNL_test_50ns_108_5cm_2_28_2019_1000_samples_10000_events","BNL_test_50ns_144_7cm_2_28_2019_1000_samples_10000_events","BNL_test_50ns_181_5cm_2_28_2019_1000_samples_10000_events"};
-	string measurement[6] = {"BNL_test_50ns_0cm_2_28_2019_1000_samples_10000_events","BNL_test_50ns_NewWater_35_0cm_3_1_2019_1000_samples_10000_events","BNL_test_50ns_NewWater_74_7cm_3_1_2019_1000_samples_10000_events","BNL_test_50ns_NewWater_102_4cm_3_1_2019_1000_samples_10000_events","BNL_test_50ns_NewWater_147_1cm_3_1_2019_1000_samples_10000_events","BNL_test_50ns_NewWater_180_8cm_3_1_2019_1000_samples_10000_events"};
-	//string measurement[6] = {"BNL_test_50ns_0cm_2_28_2019_1000_samples_10000_events","BNL_new_LED435nm_full_water_stability_500_samples_10000_events","BNL_test_50ns_NewWater_74_7cm_3_1_2019_1000_samples_10000_events","BNL_test_50ns_NewWater_102_4cm_3_1_2019_1000_samples_10000_events","BNL_test_50ns_NewWater_147_1cm_3_1_2019_1000_samples_10000_events","BNL_test_50ns_NewWater_180_8cm_3_1_2019_1000_samples_10000_events"};
-	int run_number[6] = {60,10,60,60,60,60};
+	//string measurement[6] = {"BNL_test_50ns_0cm_2_28_2019_1000_samples_10000_events","BNL_test_50ns_NewWater_35_0cm_3_1_2019_1000_samples_10000_events","BNL_test_50ns_NewWater_74_7cm_3_1_2019_1000_samples_10000_events","BNL_test_50ns_NewWater_102_4cm_3_1_2019_1000_samples_10000_events","BNL_test_50ns_NewWater_147_1cm_3_1_2019_1000_samples_10000_events","BNL_test_50ns_NewWater_180_8cm_3_1_2019_1000_samples_10000_events"};
+	string measurement[6] = {"BNL_test_50ns_0cm_2_28_2019_1000_samples_10000_events","BNL_new_LED435nm_full_water_stability_500_samples_10000_events","BNL_test_50ns_NewWater_74_7cm_3_1_2019_1000_samples_10000_events","BNL_test_50ns_NewWater_102_4cm_3_1_2019_1000_samples_10000_events","BNL_test_50ns_NewWater_147_1cm_3_1_2019_1000_samples_10000_events","BNL_test_50ns_NewWater_180_8cm_3_1_2019_1000_samples_10000_events"};
+	int run_number[6] = {60,1500,60,60,60,60};
 	vector<double> charge_ratio;
 	vector<double> height_ratio;
 	vector<double> charge_ratio_std;
