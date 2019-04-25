@@ -376,7 +376,7 @@ int main(int argc, char *argv[]){
 	TGraphErrors *charge_pl = new TGraphErrors();
 	TGraphErrors *height_pl = new TGraphErrors();
 
-	for (int i=0;i<6;i++){
+	for (int i=0;i<number_files;i++){
 		charge_pl->SetPoint(i,depth[i],charge_ratio[i]);
 		charge_pl->SetPointError(i,0,charge_ratio_std[i]);
 
