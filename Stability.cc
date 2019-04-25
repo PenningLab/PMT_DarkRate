@@ -325,8 +325,8 @@ int main(int argc, char *argv[]){
 
 			BOTTOMlot_height[i]->SetPoint(j,j,bottom_height_avg);
 			BOTTOMlot_height[i]->SetPointError(j,0,bottom_height_std);
-			cout<<"File : "<<measurement[i]<<" This is file : "<<j<<" it has ratio : "<<ratio<<" with std : "<<ratio_std<<endl;
-			cout<<"File : "<<measurement[i]<<" This is file : "<<j<<" it has height ratio : "<<ratio_height<<" with std : "<<ratio_height_std<<endl;
+			//cout<<"File : "<<measurement[i]<<" This is file : "<<j<<" it has ratio : "<<ratio<<" with std : "<<ratio_std<<endl;
+			//cout<<"File : "<<measurement[i]<<" This is file : "<<j<<" it has height ratio : "<<ratio_height<<" with std : "<<ratio_height_std<<endl;
 			total_ratio += ratio;
 			total_ratio_std += ratio*ratio;
 			total_ratio_counter++;
