@@ -237,7 +237,7 @@ int main(int argc, char *argv[]){
 						top_height = Height->at(ipulse);
 						//cout<<" Ratio pulse width : "<<Height->at(ipulse)/(end->at(ipulse)-start->at(ipulse))<<endl;
 						//top_fire = true;
-						if ((end->at(ipulse)-start->at(ipulse))<15 && (end->at(ipulse)-start->at(ipulse))>10)){
+						if ((end->at(ipulse)-start->at(ipulse))<15 && (end->at(ipulse)-start->at(ipulse))>10){
 							top_fire = true;
 						}
 						else{
@@ -249,7 +249,7 @@ int main(int argc, char *argv[]){
 						bottom_charge = QPE->at(ipulse);
 						bottom_height = Height->at(ipulse);
 						//bottom_fire = true;
-						if ((end->at(ipulse)-start->at(ipulse))<15 && (end->at(ipulse)-start->at(ipulse))>10)){
+						if ((end->at(ipulse)-start->at(ipulse))<15 && (end->at(ipulse)-start->at(ipulse))>10){
 							bottom_fire = true;
 						}
 						else{
