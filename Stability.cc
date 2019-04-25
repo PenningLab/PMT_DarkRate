@@ -236,7 +236,7 @@ int main(int argc, char *argv[]){
 						top_charge = QPE->at(ipulse);
 						top_height = Height->at(ipulse);
 						//top_fire = true;
-						if ((Height->at(ipulse)/(end->at(ipulse)-start->at(ipulse))>15) || (Height->at(ipulse)/(end->at(ipulse)-start->at(ipulse))<10)){
+						if ((Height->at(ipulse)/(end->at(ipulse)-start->at(ipulse))<15) || (Height->at(ipulse)/(end->at(ipulse)-start->at(ipulse))>10)){
 							top_fire = false;
 						}
 						else{
@@ -248,7 +248,7 @@ int main(int argc, char *argv[]){
 						bottom_charge = QPE->at(ipulse);
 						bottom_height = Height->at(ipulse);
 						//bottom_fire = true;
-						if ((Height->at(ipulse)/(end->at(ipulse)-start->at(ipulse))>15) || (Height->at(ipulse)/(end->at(ipulse)-start->at(ipulse))<10)){
+						if ((Height->at(ipulse)/(end->at(ipulse)-start->at(ipulse))<15) || (Height->at(ipulse)/(end->at(ipulse)-start->at(ipulse))>10)){
 							bottom_fire = false;
 						}
 						else{
