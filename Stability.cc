@@ -232,7 +232,7 @@ int main(int argc, char *argv[]){
 				bool bottom_fire = false;
 				//cout<<" Ratio : "<<ratio<<endl;
 				for (unsigned int ipulse=0;ipulse<Height->size();ipulse++){
-					if (PeakTime->at(ipulse)>195&&PeakTime->at(ipulse)<203){
+					if (PeakTime->at(ipulse)>191&&PeakTime->at(ipulse)<197){
 						top_charge = QPE->at(ipulse);
 						top_height = Height->at(ipulse);
 						//cout<<" Ratio pulse width : "<<Height->at(ipulse)/(end->at(ipulse)-start->at(ipulse))<<endl;
@@ -245,7 +245,7 @@ int main(int argc, char *argv[]){
 						}
 						//cout<<" top charge : "<<top_charge<<endl;
 					}
-					if (PeakTime->at(ipulse)>210&&PeakTime->at(ipulse)<222){
+					if (PeakTime->at(ipulse)>207&&PeakTime->at(ipulse)<214){
 						bottom_charge = QPE->at(ipulse);
 						bottom_height = Height->at(ipulse);
 						//bottom_fire = true;
