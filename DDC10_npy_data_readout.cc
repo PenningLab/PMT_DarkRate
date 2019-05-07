@@ -1,6 +1,6 @@
 /////////////////////////////////////////////////////////////////////////////////////////
 // To compile : g++ -I${ROOTSYS}/include/ `root-config --cflags --libs` -o
-// Tek_data_readout Tek_data_readout.cc To execute (help infomation
+// DDC10_bin_data_readout DDC10_bin_data_readout.cc To execute (help infomation
 // gives detail utility) : ./DDC10_data_readout -h
 /* Revision log :
  *
@@ -11,6 +11,7 @@
 
 */
 /////////////////////////////////////////////////////////////////////////////////////////
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 
 #include <cstdio>
 #include <cstdlib>
@@ -27,6 +28,10 @@
 #include <time.h>
 #include <vector>
 //#include <libRATEvent.so>
+#include "numpy/arrayobject.h"
+#include <Python.h>
+#include <numpy/ndarrayobject.h>
+
 #include <TAxis.h>
 #include <TCanvas.h>
 #include <TChain.h>
@@ -77,55 +82,54 @@ int baseline_samples_set = 160;
 int MovingWindowSize;
 int iteration = 0.0;
 int pth = 5.0;
-double sweeptime = 2e-6;
 
 // vector<int> run_info;
 vector<float> raw_waveform;
-vector<double> amplitude;
-vector<double> charge_v;
-vector<double> startv;
-vector<double> endv;
-vector<double> start_pointv;
-vector<double> end_pointv;
-vector<double> baseline;
-vector<double> baselinev;
-vector<double> trigbaselinev;
-vector<double> pulse_left_edge;
-vector<double> pulse_right_edge;
-vector<double> amplitude_position;
-vector<double> pl;
-vector<double> pr;
+vector<float> amplitude;
+vector<float> charge_v;
+vector<float> startv;
+vector<float> endv;
+vector<float> start_pointv;
+vector<float> end_pointv;
+vector<float> baseline;
+vector<float> baselinev;
+vector<float> trigbaselinev;
+vector<float> pulse_left_edge;
+vector<float> pulse_right_edge;
+vector<float> amplitude_position;
+vector<float> pl;
+vector<float> pr;
 vector<float> npeaks;
 
-vector<double> biggeststep;
+vector<float> biggeststep;
 vector<float> smoothingv;
 // lzap like params
-vector<double> pulse_length99;
-vector<double> pulse_length95;
-vector<double> pulse_length90;
-vector<double> pulse_length80;
-vector<double> pulse_length75;
-vector<double> pulse_length50;
-vector<double> pulse_length25;
-vector<double> pulse_length5;
+vector<float> pulse_length99;
+vector<float> pulse_length95;
+vector<float> pulse_length90;
+vector<float> pulse_length80;
+vector<float> pulse_length75;
+vector<float> pulse_length50;
+vector<float> pulse_length25;
+vector<float> pulse_length5;
 
-// vector<double> trigger_time;
-vector<double> CalibratedTime;
-vector<double> windowratio;
-vector<double> pulsebaseline_rms;
+// vector<float> trigger_time;
+vector<float> CalibratedTime;
+vector<float> windowratio;
+vector<float> pulsebaseline_rms;
 vector<short int> event_n;
 
-vector<double> smoothedBaseLine;
+vector<float> smoothedBaseLine;
 
-vector<double> triggerHeight;
-vector<double> triggerPosition;
-vector<double> triggerWidth;
+vector<float> triggerHeight;
+vector<float> triggerPosition;
+vector<float> triggerWidth;
 
-vector<double> event_charge;
-vector<double> event_charge_ten;
-vector<double> event_baseline;
-vector<double> event_rms;
-// vector<double> event_rate;
+vector<float> event_charge;
+vector<float> event_charge_ten;
+vector<float> event_baseline;
+vector<float> event_rms;
+vector<float> event_time;
 
 int number_of_samples;
 int Nchannels;
@@ -174,7 +178,7 @@ void extract_event(vector<float> &v, double b, double rms, int nos, int trigger,
   // cout<<" vector size is : "<<v.size()<<endl;
   // getchar();
   // Let's looking for the Pulses
-  for (int i = 0; i < v.size(); i++) {
+  for (int i = 0; i < (int)v.size(); i++) {
     double integral = SimpsIntegral(v, b, i, i + windowSize);
     int left = 0;
     int right = 0;
@@ -340,18 +344,18 @@ void extract_event(vector<float> &v, double b, double rms, int nos, int trigger,
   }
 }
 // Find the baseline
-double baseline_rms(vector<double> &v, vector<float> &sample, double *irms) {
+double baseline_rms(vector<float> &v, vector<float> &sample, double *irms) {
   double rms = 0;
   double temp_base = 0;
   // double baseline_samples = accumulate(v.begin(),v.end(),0);
   double baseline_samples = 0;
-  for (int k = 0; k < v.size(); k++) {
+  for (int k = 0; k < (int)v.size(); k++) {
     baseline_samples += v[k];
   }
   // if (signal_start&&debug_mode)
-  //    cout<<" baseline_samples is  : "<<baseline_samples<<endl;
-  baseline_samples /= v.size();
-  for (int i = 0; i < v.size(); i++) {
+  //    cout<<" baseline_samfloats is  : "<<baseline_samples<<endl;
+  baseline_samples /= (float)v.size();
+  for (int i = 0; i < (int)v.size(); i++) {
     //    if (signal_start&&debug_mode)
     //        cout<<" baseline sample is  : "<<v[i]<<endl;
     rms += pow(v[i] - baseline_samples, 2);
@@ -392,18 +396,17 @@ double Trigger_info(vector<float> waveform) {
   return time;
 }
 
-void getwaveform(vector<float> &v, int channel, int numread, float mult = 1,
+void getwaveform(vector<float> &v, int evt, PyArrayObject *arr, float mult = 1,
                  bool trig = false) {
-  int starti = ((current_sweep - numread) * Nchannels + channel) *
-                   (4 + 2 + number_of_samples) +
-               4;
   /*if(current_sweep%100000==0){
           cout<<"starting at "<<starti<<" in buffer"<<endl;
           cout<<"Evt "<<(current_sweep-numread)<<" of this buffer"<<endl;
   }*/
   double datum;
   for (int i = 0; i < number_of_samples; i++) {
-    datum = (double)buff[i + starti] * mult / (double)adc_per_Volt;
+    // cout << "reading sample " << i << endl;
+    datum = *reinterpret_cast<int *>(PyArray_GETPTR2(arr, evt, i));
+    datum *= mult / (double)adc_per_Volt;
     v.push_back(datum);
     if (i < baseline_samples_set) {
       if (!trig)
@@ -413,51 +416,6 @@ void getwaveform(vector<float> &v, int channel, int numread, float mult = 1,
     }
   }
 }
-
-void getwaveformtd(vector<float> &v, float mult = 1) {
-  double datum;
-  char linea[200];
-  int header = 0;
-  int nos = 0;
-  TString *buff = new TString();
-  // while (!fin.rdstate()) {
-  streampos oldpos;
-  while (!fin.rdstate()) {
-    fin.getline(linea, 200);
-    *buff = linea;
-    if (buff->Contains("channel")) {
-      header = 0;
-      while (!buff->Contains("data")) {
-        fin.getline(linea, 200);
-        *buff = linea;
-      }
-      if (buff->Contains("data")) {
-        fin.getline(linea, 200);
-        *buff = linea;
-        while (!buff->Contains("channel") && !fin.rdstate()) {
-          nos++;
-          datum = mult * buff->Atof();
-          if (isinf(datum) || isnan(datum) || datum > 2 || datum < -1) {
-            datum = 0;
-          }
-          v.push_back(datum);
-          if (nos < baseline_samples_set)
-            baselinev.push_back(datum);
-
-          oldpos = fin.tellg();
-          fin.getline(linea, 200);
-          *buff = linea;
-        }
-        break;
-      }
-    }
-  }
-  fin.seekg(oldpos);
-  number_of_samples = nos;
-
-  //}
-}
-
 int calcnumchannels(int mask) {
   int numchans = 0;
   while (mask > 0) {
@@ -477,29 +435,29 @@ vector<float> Smoothen(vector<float> &v) {
   if (boxsmoothing) {                        // boxcar smoothing
     for (int it = 0; it < iteration; it++) { // how many passes
       if (it < 1) {
-        for (int i = 0; i < v.size(); i++) {
+        for (int i = 0; i < (int)v.size(); i++) {
           sum = 0.0;
           movingAverage = 0.0;
           if (i < (MovingWindowSize - 1) / 2) {
             smoothv.push_back(v[i]);
           } else if (i >= (MovingWindowSize - 1) / 2 &&
-                     i < (v.size() - MovingWindowSize)) {
+                     i < ((int)v.size() - MovingWindowSize)) {
             for (int j = (i - (MovingWindowSize - 1) / 2);
                  j <= (i + (MovingWindowSize - 1) / 2); ++j) {
               sum += v[j];
             }
             movingAverage = sum / MovingWindowSize;
             smoothv.push_back(movingAverage);
-          } else if (i >= (v.size() - MovingWindowSize)) {
+          } else if (i >= ((int)v.size() - MovingWindowSize)) {
             smoothv.push_back(v[i]);
           }
         }
       } else {
-        for (int i = 0; i < smoothv.size(); i++) {
+        for (int i = 0; i < (int)smoothv.size(); i++) {
           sum = 0.0;
           movingAverage = 0.0;
           if (i >= (MovingWindowSize - 1) / 2 &&
-              i < (v.size() - MovingWindowSize)) {
+              i < ((int)v.size() - MovingWindowSize)) {
             for (int j = (i - (MovingWindowSize - 1) / 2);
                  j <= (i + (MovingWindowSize - 1) / 2); ++j) {
               sum += v[j];
@@ -518,13 +476,13 @@ vector<float> Smoothen(vector<float> &v) {
                   // points)
     for (int it = 0; it < iteration; it++) { // how many passes
       if (it < 1) {
-        for (int i = 0; i < v.size(); i++) {
+        for (int i = 0; i < (int)v.size(); i++) {
           sum = 0.0;
           movingAverage = 0.0;
           if (i < (MovingWindowSize - 1) / 2) {
             smoothv.push_back(v[i]);
           } else if (i >= (MovingWindowSize - 1) / 2 &&
-                     i < (v.size() - MovingWindowSize)) {
+                     i < ((int)v.size() - MovingWindowSize)) {
             for (int j = (i - (MovingWindowSize - 1) / 2);
                  j <= (i + (MovingWindowSize - 1) / 2); ++j) {
               if (j == (i - (MovingWindowSize - 1) / 2) ||
@@ -537,16 +495,16 @@ vector<float> Smoothen(vector<float> &v) {
             }
             movingAverage = sum / 4;
             smoothv.push_back(movingAverage);
-          } else if (i >= (v.size() - MovingWindowSize)) {
+          } else if (i >= ((int)v.size() - MovingWindowSize)) {
             smoothv.push_back(v[i]);
           }
         }
       } else {
-        for (int i = 0; i < smoothv.size(); i++) {
+        for (int i = 0; i < (int)smoothv.size(); i++) {
           sum = 0.0;
           movingAverage = 0.0;
           if (i >= (MovingWindowSize - 1) / 2 &&
-              i < (v.size() - MovingWindowSize)) {
+              i < ((int)v.size() - MovingWindowSize)) {
             for (int j = (i - (MovingWindowSize - 1) / 2);
                  j <= (i + (MovingWindowSize - 1) / 2); ++j) {
               if (j == (i - (MovingWindowSize - 1) / 2) ||
@@ -575,13 +533,13 @@ vector<float> Smoothen(vector<float> &v) {
     for (int n = 0; n < WidthSample; n++) {
       smoothv[n] = rollingSum / WidthSample;
     }
-    for (int n = WidthSample; n < v.size(); n++) {
+    for (int n = WidthSample; n < (int)v.size(); n++) {
       rollingSum += v[n];
       rollingSum -= v[n - WidthSample];
       smoothv[n - WidthSample / 2] = rollingSum / WidthSample;
     }
-    for (int n = v.size() - WidthSample / 2; n < v.size(); n++) {
-      smoothv[n] = smoothv[v.size() - WidthSample / 2 - 1];
+    for (int n = (int)v.size() - WidthSample / 2; n < (int)v.size(); n++) {
+      smoothv[n] = smoothv[(int)v.size() - WidthSample / 2 - 1];
     }
     for (int i = 0; i < baseline_samples_set; i++) {
       smoothedBaseLine.push_back(smoothv[i]);
@@ -613,6 +571,7 @@ int main(int argc, char *argv[]) {
   string outfilename;
   string working_dir;
   string baseline_file;
+  std::string pydir;
 
   bool use_trigger = false;
   bool trigger_inversion = false;
@@ -640,8 +599,6 @@ int main(int argc, char *argv[]) {
     } else if (arg == "-t") {
       trig_channel = atoi(argv[i + 1]);
       use_trigger = true;
-    } else if (arg == "-width") {
-      sweeptime = atof(argv[i + 1]);
     } else if (arg == "-wform") {
       wform_channel = atoi(argv[i + 1]);
     } else if (arg == "-bs") {
@@ -677,6 +634,9 @@ int main(int argc, char *argv[]) {
       smoothing = true;
     } else if (arg == "-sit") {
       iteration = atoi(argv[i + 1]);
+    } else if (arg == "-pydir") {
+      pydir = argv[i + 1];
+      // pydir.append("/readlogs.py");
     }
   }
 
@@ -702,13 +662,119 @@ int main(int argc, char *argv[]) {
   char open_filename[200]; // full input filename
   sprintf(open_filename, "%s/%s", working_dir.c_str(), filename.c_str());
   cout << " We are opening " << open_filename << endl;
-  fin.open(open_filename, ios::in);
+  /*
+    fin.open(open_filename, ios::binary | ios::in | ios::ate);
 
-  if (!fin.is_open()) {
-    cout << "Failed to open file" << endl;
+    if (fin.is_open()) {
+      // memblock.resize(size);
+      size = fin.tellg();
+      fin.seekg(0, ios::beg);
+      // cout<<"size: "<<size<<endl;
+      // numevts = new char [5];
+      fin.read((char *)&Nevts, sizeof(Nevts));
+      cout << Nevts << " Events" << endl;
+
+      fin.read((char *)&number_of_samples, sizeof(number_of_samples));
+      cout << number_of_samples << " Samples" << endl;
+
+      fin.read((char *)&mask, sizeof(mask));
+      cout << "Mask: " << mask << endl;
+      Nchannels = calcnumchannels(mask);
+      cout << Nchannels << " channels" << endl;
+
+      fin.read((char *)&dummy, sizeof(dummy));
+    } else {
+      cout << "Failed to open file" << endl;
+      return -1;
+    }
+    int predsize =
+        Nevts * Nchannels * (2 * 4 + 2 * number_of_samples + 4) + 4 * 4;
+    if (size < predsize) {
+      cout << "Warning::Size predicted from header is greater than actual size"
+           << endl;
+      return -1;
+    }
+
+    if (wform_channel >= Nchannels || wform_channel < 0 ||
+        ((trig_channel >= Nchannels || trig_channel < 0) && use_trigger)) {
+      cout << "Channel numbers given do not match file header, double check your
+    " "inputs."
+           << endl;
+      return -1;
+    }
+    int evtsize = Nchannels * (2 * 4 + 2 * number_of_samples + 4);
+    int buffsize;
+    if ((Nevts * evtsize) > 335544320)
+      buffsize = 335544320 / evtsize;
+    else
+      buffsize = Nevts;
+    cout << "Using buffer of " << buffsize << " events" << endl;
+  */
+
+  std::cout << "Initializing python" << std::endl;
+  Py_Initialize();
+  std::cout << "Updating syspath with pydir: " << pydir << std::endl;
+  PyObject *sysPath = PySys_GetObject("path");
+  PyList_Append(sysPath, PyUnicode_FromFormat("%s", pydir.c_str()));
+
+  std::cout << "Loading module" << std::endl;
+  // Load module
+  PyObject *pName = PyUnicode_FromString("ReadNpyfiles");
+  PyObject *pModule = PyImport_Import(pName);
+  PyArrayObject *pData = NULL;
+  Py_DECREF(pName);
+  int nd1 = 0, nd2 = 0;
+  if (pModule != NULL) {
+    std::cout << "Py Module Found" << std::endl;
+
+    // Get function from module
+    PyObject *pFunc = PyObject_GetAttrString(pModule, "loadnpyfile");
+    if (pFunc && PyCallable_Check(pFunc)) {
+      PyObject *pargs = PyTuple_New(1);
+      PyObject *pval = NULL;
+      pval = PyUnicode_FromFormat("%s", open_filename);
+      PyTuple_SetItem(pargs, 0, pval);
+
+      pval = PyObject_CallObject(pFunc, pargs);
+      if (pval != NULL && PyTuple_Check(pval)) {
+        // PyObject *pTemp = PyTuple_GetItem(pval, 0);
+        pData = reinterpret_cast<PyArrayObject *>(PyTuple_GetItem(pval, 0));
+        nd1 = PyLong_AsLong(PyTuple_GetItem(pval, 1));
+        nd2 = PyLong_AsLong(PyTuple_GetItem(pval, 2));
+        npy_intp *pshape = PyArray_SHAPE(pData);
+
+        std::cout << "Array has " << PyArray_NDIM(pData) << " dims and "
+                  << pshape[0] << " x " << pshape[1] << " Elements"
+                  << std::endl;
+        // cout << "Array is int? " << PyArray_ISINTEGER(pData) << endl;
+        // Py_XDECREF(pTemp);
+      } else {
+        PyErr_Print();
+        std::cout << "Failed to get result" << std::endl;
+      }
+      Py_XINCREF(pData);
+      Py_XDECREF(pval);
+      Py_DECREF(pargs);
+    } else {
+      if (PyErr_Occurred())
+        PyErr_Print();
+      std::cout << "Couldn't find loadnpyfile " << std::endl;
+    }
+    Py_XDECREF(pFunc);
+    Py_XDECREF(pModule);
+  } else {
+    PyErr_Print();
+    std::cout << "Failed to load module" << std::endl;
+  }
+  // cout << "Typechecking pData" << endl;
+  if (pData == NULL) {
+    std::cout << "Failed to read data file. Exiting" << std::endl;
+    Py_FinalizeEx();
     return -1;
   }
 
+  number_of_samples = nd2;
+  Nevts = nd1;
   // Plots for debugging pulse finding algorithm
   TGraph *t11;
   TGraph *t22;
@@ -719,9 +785,6 @@ int main(int argc, char *argv[]) {
   // char linea[200];// temp char for line in the file
   // TString* buff=new TString();
   char out_filename[200]; // full output filename
-  int iana = 0;           // TGraph counter
-  int pcount = 0;         // Pulse counter
-  double temp_sum = 0;
   double rms_value;
 
   sprintf(out_filename, "%s/%s", working_dir.c_str(), outfilename.c_str());
@@ -756,38 +819,57 @@ int main(int argc, char *argv[]) {
         "pulseLength25:pulseLength50:pulseLength75:pulseLength80:pulseLength90:"
         "pulseLength95:pulseLength99");
 
-  TNtuple *event = new TNtuple("event", "event",
-                               "charge:charge_frac:baseline:rms:npulses:rate");
-  // TTree *wforms_tree = new TTree("waveforms", "Waveform Tree");
-  // float waveforms[8192];
+  TNtuple *event =
+      new TNtuple("event", "event", "charge:charge_frac:baseline:rms:npulses");
+  TTree *wforms_tree = new TTree("waveforms", "Waveform Tree");
+  float waveforms[8192];
   float trigger_t;
 
-  // wforms_tree->Branch("pmt_waveforms", &waveforms[0],
-  // TString::Format("waveforms[%i]/F", number_of_samples));
-  // if (use_trigger)
-  //    wforms_tree->Branch("trigger_time", &trigger_t, "trigger_t/F");
+  wforms_tree->Branch("pmt_waveforms", &waveforms[0],
+                      TString::Format("waveforms[%i]/F", number_of_samples));
+  if (use_trigger)
+    wforms_tree->Branch("trigger_time", &trigger_t, "trigger_t/F");
   // Store the waveform plot for debugging
-  TCanvas *waveplot;
-  vector<double> baseline_sweep;
+  TCanvas *waveplot[100];
+  vector<float> baseline_sweep;
   vector<float> trigwaveform;
 
-  int skip = 0;
-  int sweep = 0;
-  while (!fin.rdstate()) {
+  for (int sweep = 0; sweep < Nevts; sweep++) {
+    /*
+    if ((readin) < (sweep + 1)) {
+      int arrsize = buffsize * evtsize / 2;
+      if ((Nevts - readin) < buffsize) {
+        arrsize = (Nevts - readin) * evtsize / 2;
+      }
+      buff = new short int[arrsize];
+      fin.read((char *)&buff[0], arrsize * sizeof(buff[0]));
+      lastadd = readin;
+      readin += arrsize * 2 / evtsize;
 
+      cout << "Read in " << readin << " events so far" << endl;
+    }
+    */
     if (sweep % 100 == 0) {
       cout << " This is sweep : " << sweep << endl;
-      cout << "Trigger time: " << trigger_t << endl;
+      cout << " Trigger time: " << trigger_t << endl;
     }
     current_sweep = sweep;
 
+    if (use_trigger) {
+      signal_start = false;
+      getwaveform(trigwaveform, sweep, pData, (trigger_inversion ? -1.0 : 1.0),
+                  true);
+      trigger_t = Trigger_info(trigwaveform);
+      trigwaveform.clear();
+    }
+
     signal_start = true;
-    getwaveformtd(raw_waveform, (invert_waveform ? -1.0 : 1.0));
-    // std::copy(raw_waveform.begin(), raw_waveform.end(), waveforms);
-    if (sweep % 100 == 0)
-      std::cout << "Read Waveform with " << raw_waveform.size() << " samples. "
-                << "Initiating extraction" << std::endl;
-    // wforms_tree->Fill();
+    // cout << "reading Waveform" << endl;
+    getwaveform(raw_waveform, sweep, pData, (invert_waveform ? -1.0 : 1.0));
+    // cout << "Waveform read" << endl;
+
+    std::copy(raw_waveform.begin(), raw_waveform.end(), waveforms);
+    wforms_tree->Fill();
     number_of_peaks = 0.0;
     double thisbase = (use_basefile ? fixedrms : 0);
 
@@ -825,20 +907,20 @@ int main(int argc, char *argv[]) {
       t22 = new TGraph();
       t33 = new TGraph();
       t55 = new TGraph();
-      for (int j = 0; j < pulse_left_edge.size(); j++) {
+      for (int j = 0; j < (int)pulse_left_edge.size(); j++) {
         t22->SetPoint(j, pulse_left_edge[j], startv[j]);
         t33->SetPoint(j, pulse_right_edge[j], endv[j]);
       }
       for (int sam = 0; sam < number_of_samples; sam++) {
         t11->SetPoint(sam, sam, raw_waveform[sam]);
         if (smoothing) {
-          if (sam < smoothingv.size())
+          if (sam < (int)smoothingv.size())
             t55->SetPoint(sam, sam, smoothingv[sam]);
         }
       }
       char plotname[30];
       sprintf(plotname, "waveform%d", sweep);
-      waveplot = new TCanvas(plotname);
+      waveplot[sweep] = new TCanvas(plotname);
       TLine *line = new TLine(0, rms_value, number_of_samples, rms_value);
       TLine *line2 = new TLine(0, rms_value - thisbase, number_of_samples,
                                rms_value - thisbase);
@@ -867,30 +949,23 @@ int main(int argc, char *argv[]) {
       line->Draw("");
       line2->Draw("");
       line3->Draw("");
-      waveplot->Write();
+      waveplot[sweep]->Write();
       cout << " plotting the waveform, this is sweep : " << sweep << endl;
-      t11->Delete();
-      t22->Delete();
-      t33->Delete();
-      t55->Delete();
-      line->Delete();
-      line2->Delete();
-      line3->Delete();
     }
-    cout << "Clearing loose vectors" << endl;
     pulse_left_edge.clear();
     pulse_right_edge.clear();
     startv.clear();
     endv.clear();
     raw_waveform.clear();
     // skip += ;
-    sweep++;
   }
+
+  Py_FinalizeEx();
 
   // Fill Ntuple
   // pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime
   cout << " before tree fill !" << endl;
-  for (int i = 0; i < amplitude.size(); i++) {
+  for (int i = 0; i < (int)amplitude.size(); i++) {
     if (use_trigger) {
       float mtinput[] = {amplitude[i],
                          pr[i],
@@ -940,12 +1015,12 @@ int main(int argc, char *argv[]) {
   }
   cout << " after tree fill ! " << endl;
   TGraph *baseline_plot = new TGraph();
-  for (int i = 0; i < baseline_sweep.size(); i++) {
+  for (int i = 0; i < (int)baseline_sweep.size(); i++) {
     baseline_plot->SetPoint(i, i, baseline_sweep[i]);
   }
-  for (int i = 0; i < event_charge.size(); i++) {
+  for (int i = 0; i < (int)event_charge.size(); i++) {
     event->Fill(event_charge[i], event_charge_ten[i], event_baseline[i],
-                event_rms[i], npeaks[i], npeaks[i] / sweeptime);
+                event_rms[i], npeaks[i]);
   }
 
   // Baseline plot
@@ -959,7 +1034,7 @@ int main(int argc, char *argv[]) {
   cout << " Total sweeps is : " << Nevts << endl;
 
   nosinfo->Write("Nsamples");
-  // wforms_tree->Write();
+  wforms_tree->Write();
   pulse->Write();
   event->Write();
   bplot->Write();
