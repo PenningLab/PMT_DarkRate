@@ -180,7 +180,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 	// cout<<" vector size is : "<<v.size()<<endl;
 	// getchar();
 	// Let's looking for the Pulses
-	for (int i = 0; i < v.size() - windowSize; i++)
+	for (int i = baseline_samples_set; i < v.size() - windowSize; i++)
 	{
 		// std::cout << "Sample " << i << std::endl;
 		double integral = SimpsIntegral(v, b, i, i + windowSize);
@@ -502,165 +502,6 @@ bool readlivetime(char datafilename[])
 	return true;
 }
 
-vector<float> Smoothen(vector<float>& v)
-{
-	vector<float> smoothv;
-
-	double sum = 0.0;
-	double movingAverage = 0.0;
-	int WidthSample = 5;
-	int rollingSum = 0.0;
-
-	if (boxsmoothing)
-	{ // boxcar smoothing
-		for (int it = 0; it < iteration; it++)
-		{ // how many passes
-			if (it < 1)
-			{
-				for (int i = 0; i < v.size(); i++)
-				{
-					sum = 0.0;
-					movingAverage = 0.0;
-					if (i < (MovingWindowSize - 1) / 2)
-					{
-						smoothv.push_back(v[i]);
-					}
-					else if (i >= (MovingWindowSize - 1) / 2 && i < (v.size() - MovingWindowSize))
-					{
-						for (int j = (i - (MovingWindowSize - 1) / 2); j <= (i + (MovingWindowSize - 1) / 2); ++j)
-						{
-							sum += v[j];
-						}
-						movingAverage = sum / MovingWindowSize;
-						smoothv.push_back(movingAverage);
-					}
-					else if (i >= (v.size() - MovingWindowSize))
-					{
-						smoothv.push_back(v[i]);
-					}
-				}
-			}
-			else
-			{
-				for (int i = 0; i < smoothv.size(); i++)
-				{
-					sum = 0.0;
-					movingAverage = 0.0;
-					if (i >= (MovingWindowSize - 1) / 2 && i < (v.size() - MovingWindowSize))
-					{
-						for (int j = (i - (MovingWindowSize - 1) / 2); j <= (i + (MovingWindowSize - 1) / 2); ++j)
-						{
-							sum += v[j];
-						}
-						movingAverage = sum / MovingWindowSize;
-						smoothv[i] = movingAverage;
-					}
-				}
-			}
-		}
-		for (int i = 0; i < baseline_samples_set; i++)
-		{
-			smoothedBaseLine.push_back(smoothv[i]);
-		}
-	}
-	if (triangle)
-	{ // triangular smoothing which preserves area under peaks ( 3
-	  // points)
-		for (int it = 0; it < iteration; it++)
-		{ // how many passes
-			if (it < 1)
-			{
-				for (int i = 0; i < v.size(); i++)
-				{
-					sum = 0.0;
-					movingAverage = 0.0;
-					if (i < (MovingWindowSize - 1) / 2)
-					{
-						smoothv.push_back(v[i]);
-					}
-					else if (i >= (MovingWindowSize - 1) / 2 && i < (v.size() - MovingWindowSize))
-					{
-						for (int j = (i - (MovingWindowSize - 1) / 2); j <= (i + (MovingWindowSize - 1) / 2); ++j)
-						{
-							if (j == (i - (MovingWindowSize - 1) / 2) || j == (i + (MovingWindowSize - 1) / 2))
-							{
-								sum += v[j];
-							}
-							if (j == i)
-							{
-								sum += 2 * v[j];
-							}
-						}
-						movingAverage = sum / 4;
-						smoothv.push_back(movingAverage);
-					}
-					else if (i >= (v.size() - MovingWindowSize))
-					{
-						smoothv.push_back(v[i]);
-					}
-				}
-			}
-			else
-			{
-				for (int i = 0; i < smoothv.size(); i++)
-				{
-					sum = 0.0;
-					movingAverage = 0.0;
-					if (i >= (MovingWindowSize - 1) / 2 && i < (v.size() - MovingWindowSize))
-					{
-						for (int j = (i - (MovingWindowSize - 1) / 2); j <= (i + (MovingWindowSize - 1) / 2); ++j)
-						{
-							if (j == (i - (MovingWindowSize - 1) / 2) || j == (i + (MovingWindowSize - 1) / 2))
-							{
-								sum += smoothv[j];
-							}
-							if (j == i)
-							{
-								sum += 2 * smoothv[j];
-							}
-						}
-						movingAverage = sum / 4;
-						smoothv[i] = movingAverage;
-					}
-				}
-			}
-		}
-		for (int i = 0; i < baseline_samples_set; i++)
-		{
-			smoothedBaseLine.push_back(smoothv[i]);
-		}
-	}
-	if (rolling)
-	{
-		smoothv.resize(8000, 0);
-		for (int n = 0; n < WidthSample; n++)
-		{
-			rollingSum += v[n];
-		}
-		for (int n = 0; n < WidthSample; n++)
-		{
-			smoothv[n] = rollingSum / WidthSample;
-		}
-		for (int n = WidthSample; n < v.size(); n++)
-		{
-			rollingSum += v[n];
-			rollingSum -= v[n - WidthSample];
-			smoothv[n - WidthSample / 2] = rollingSum / WidthSample;
-		}
-		for (int n = v.size() - WidthSample / 2; n < v.size(); n++)
-		{
-			smoothv[n] = smoothv[v.size() - WidthSample / 2 - 1];
-		}
-		for (int i = 0; i < baseline_samples_set; i++)
-		{
-			smoothedBaseLine.push_back(smoothv[i]);
-		}
-	}
-	if (debug_mode)
-		cout << " Smooth vector has elements : " << smoothv.size() << endl;
-	return smoothv;
-}
-
 static void show_usage(string name)
 {
 	cout << " Usage : ./DDC10_data_readout [-co] file1 " << name << " Options:\n"
@@ -763,33 +604,6 @@ int main(int argc, char* argv[])
 		else if (arg == "-debug")
 		{
 			debug_mode = true;
-		}
-		else if (arg == "-s")
-		{
-			smoothing = true;
-		}
-		else if (arg == "-box")
-		{
-			boxsmoothing = true;
-			smoothing = true;
-		}
-		else if (arg == "-mwin")
-		{
-			MovingWindowSize = atoi(argv[i + 1]);
-		}
-		else if (arg == "-roll")
-		{
-			rolling = true;
-			smoothing = true;
-		}
-		else if (arg == "-tri")
-		{
-			triangle = true;
-			smoothing = true;
-		}
-		else if (arg == "-sit")
-		{
-			iteration = atoi(argv[i + 1]);
 		}
 		else if (arg == "-readlogs")
 		{
@@ -900,10 +714,10 @@ int main(int argc, char* argv[])
 	cout << " Out put filename is : " << out_filename << endl;
 	TFile* fout = new TFile(out_filename, "RECREATE");
 
-	TH1D* h = new TH1D(("ADC_sum_waveform" + filename).c_str(), ("#font[132]{WFD " + filename + " SumWaveForm}").c_str(), 10000, 0, 10000);
-	h->SetXTitle("#font[132]{Sample (2ns)}");
-	h->GetXaxis()->SetLabelFont(132);
-	h->GetYaxis()->SetLabelFont(132);
+	TH1D* h_sum = new TH1D(("ADC_sum_waveform" + filename).c_str(), ("#font[132]{WFD " + filename + " SumWaveForm}").c_str(), 10000, 0, 10000);
+	h_sum->SetXTitle("#font[132]{Sample (2ns)}");
+	h_sum->GetXaxis()->SetLabelFont(132);
+	h_sum->GetYaxis()->SetLabelFont(132);
 	// Tetsing the dark hit counter
 	TH1F* dark_hits = new TH1F("dark_rate", "dark_rate", 25000, 0, 50000);
 	// dark_hits->SetBit(TH1::kCanRebin);
@@ -993,25 +807,15 @@ int main(int argc, char* argv[])
 		std::copy(raw_waveform.begin(), raw_waveform.end(), waveforms);
 		// wforms_tree->Fill();
 		npulses = 0.0;
-		double thisbase = (use_basefile ? fixedrms : 0);
+		double thisbase;
+		rms_value = (use_basefile ? fixedrms : 0);
 
-		if (smoothing)
-		{
-			smoothingv.clear();
-			smoothingv = Smoothen(raw_waveform);
-			rms_value = (use_basefile ? fixedbase : baseline_rms(smoothedBaseLine, smoothingv, &thisbase));
-
-			extract_event(smoothingv, thisbase, rms_value, smoothingv.size(), 0, false);
-		}
-		else
-		{
-			rms_value = (use_basefile ? fixedbase : baseline_rms(baselinev, raw_waveform, &thisbase));
-			extract_event(raw_waveform, rms_value, thisbase, number_of_samples, (use_trigger ? trigger_t : 0));
-		}
+		thisbase = (use_basefile ? fixedbase : baseline_rms(baselinev, raw_waveform, &rms_value));
+		extract_event(raw_waveform, thisbase, rms_value, number_of_samples, (use_trigger ? trigger_t : 0));
 
 		if (debug_mode)
 		{
-			cout << " basline is  : " << rms_value << " rms is : " << thisbase << endl;
+			cout << " basline is  : " << thisbase << " rms is : " << rms_value << endl;
 			getchar();
 		}
 		if (readlogs)
@@ -1019,11 +823,11 @@ int main(int argc, char* argv[])
 			livetime = vlivetime[Nevts - sweep - 1];
 			vlivetime.pop_back();
 		}
-		event_baseline = rms_value;
-		event_rms = thisbase;
+		event_baseline = thisbase;
+		event_rms = rms_value;
 		event->Fill();
 		// event_time.push_back(number_of_samples);
-		baseline_sweep.push_back(rms_value); // save baseline for checking baseline shifting
+		baseline_sweep.push_back(thisbase); // save baseline for checking baseline shifting
 		double drate = npulses;
 		if (readlogs)
 			drate *= 1.0 / livetime;
@@ -1033,13 +837,18 @@ int main(int argc, char* argv[])
 		// npeaks.push_back(npulses);
 		baselinev.clear();
 		// fill canvases
+		for (int sam = 0; sam < number_of_samples; sam++)
+		{
+			h_sum->Fill(sam, raw_waveform[sam] - thisbase);
+		}
+		// fill canvases
 		if (sweep < 100)
 		{
 			t11 = new TGraph();
 			t22 = new TGraph();
 			t33 = new TGraph();
-			t55 = new TGraph();
-			for (int j = 0; j < pulse_left_edge.size(); j++)
+			double rmax = 0, rmin = 1e16;
+			for (int j = 0; j < (int)pulse_left_edge.size(); j++)
 			{
 				t22->SetPoint(j, pulse_left_edge[j], startv[j]);
 				t33->SetPoint(j, pulse_right_edge[j], endv[j]);
@@ -1047,18 +856,18 @@ int main(int argc, char* argv[])
 			for (int sam = 0; sam < number_of_samples; sam++)
 			{
 				t11->SetPoint(sam, sam, raw_waveform[sam]);
-				if (smoothing)
-				{
-					if (sam < smoothingv.size())
-						t55->SetPoint(sam, sam, smoothingv[sam]);
-				}
+				if (std::fabs(raw_waveform[sam]) > rmax)
+					rmax = std::fabs(raw_waveform[sam]);
+				if (raw_waveform[sam] < rmin)
+					rmin = raw_waveform[sam];
 			}
 			char plotname[30];
 			sprintf(plotname, "waveform%d", sweep);
 			waveplot = new TCanvas(plotname);
-			TLine* line = new TLine(0, rms_value, number_of_samples, rms_value);
-			TLine* line2 = new TLine(0, rms_value - thisbase, number_of_samples, rms_value - thisbase);
+			TLine* line = new TLine(0, thisbase, number_of_samples, thisbase);
+			TLine* line2 = new TLine(0, -rms_value + thisbase, number_of_samples, -rms_value + thisbase);
 			TLine* line3 = new TLine(0, rms_value + thisbase, number_of_samples, rms_value + thisbase);
+
 			line->SetLineColor(3);
 			line->SetLineStyle(3);
 			line->SetLineWidth(3);
@@ -1074,14 +883,20 @@ int main(int argc, char* argv[])
 			t33->SetMarkerColor(4);
 			t33->SetMarkerStyle(3);
 			t33->SetMarkerSize(3);
-			t55->SetLineColor(2);
 			t11->Draw("alp");
 			t22->Draw("p");
 			t33->Draw("p");
-			t55->Draw("lp");
 			line->Draw("");
 			line2->Draw("");
 			line3->Draw("");
+			if (use_trigger)
+			{
+				TLine* line4 = new TLine(triggerStartSam * timescale, rmax, triggerStartSam * timescale, rmin * 1.1);
+				line4->SetLineColor(46);
+				line4->SetLineStyle(3);
+				line4->SetLineWidth(3);
+				line4->Draw("");
+			}
 			waveplot->Write();
 			cout << " plotting the waveform, this is sweep : " << sweep << endl;
 			delete line;
@@ -1108,9 +923,10 @@ int main(int argc, char* argv[])
 	baseline_plot->Draw("AP");
 
 	cout << " Total sweeps is : " << Nevts << endl;
-
+	h_sum->Scale(1.0 / (double)Nevts);
 	event->Write();
 	bplot->Write();
+	h_sum->Write();
 	fout->Write();
 	fout->Close();
 

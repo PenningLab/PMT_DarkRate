@@ -1,6 +1,8 @@
 /////////////////////////////////////////////////////////////////////////////////////////
-/* To compile : g++ DDC10_npy_data_readout.cc -o DDC10_npy_data_readout -I${ROOTSYS}/include/ `root-config --cflags --libs` `python3-config --cflags
- * --ldflags --libs` -fPIC
+/*
+To compile :
+g++ DDC10_pkl_data_readout.cc -o DDC10_pkl_data_readout -I${ROOTSYS}/include/ `root-config --cflags --libs` `python3-config --cflags --ldflags --libs`
+-fPIC
  */
 // To execute (help infomation gives detail utility) : ./DDC10_data_readout -h
 /* Revision log :
@@ -60,9 +62,8 @@ using namespace std;
 ifstream fin;
 bool signal_start = false;
 bool debug_mode = false;
-
-bool lim_sams = false;
 bool skipevent = false;
+bool lim_sams = false;
 
 bool smoothing = false;
 bool rolling = false;
@@ -75,13 +76,13 @@ double pulseThresh = 8.0;
 double tPulseThresh = 10.0;
 double windowSize = 3.0;
 double edgeThresh = 3.0;
-double lookforward = 5.0;
+double lookforward = 10.0;
 int current_sweep = 0;
 double number_of_peaks = 0.0;
 int adc_per_Volt = 8192;
-double ns = 1e-9;
+const double ns = 1e-9;
 double start_time = 0;
-double timescale = 1.0;
+double timescale = 10e-9 / ns;
 double resistance = 50;
 int baseline_samples_set = 160;
 int MovingWindowSize;
@@ -113,8 +114,7 @@ vector<float> smoothingv;
 vector<float> smoothedBaseLine;
 
 // output parameters
-const int kMaxPulses = 1000;
-const int kMaxPulseSamples = 500;
+const int kMaxPulses = 800;
 
 float amplitude[kMaxPulses];
 float charge_v[kMaxPulses];
@@ -130,23 +130,23 @@ float pulse_length80[kMaxPulses];
 float pulse_length75[kMaxPulses];
 float pulse_length50[kMaxPulses];
 float pulse_length25[kMaxPulses];
+// float pulse_length10[kMaxPulses];
 float pulse_length5[kMaxPulses];
 float pulse_length1[kMaxPulses];
 float pulse_length05[kMaxPulses];
 float CalibratedTime[kMaxPulses];
-// float found_pulses[kMaxPulses][kMaxPulseSamples];
-// int found_pulses_nsamples[kMaxPulses];
 // float windowratio;
 // float pulsebaseline_rms;
 
 float triggerHeight;
-float triggerStart = 0;
-float triggerStartSam = 0;
+float triggerStart;
+float triggerStartSam;
 float triggerRising05;
 float triggerRising1;
 float triggerRising5;
 float triggerPosition;
 float triggerWidth;
+int nTrigs = 0;
 
 float event_charge;
 float event_charge_ten;
@@ -155,6 +155,7 @@ float event_rms;
 int npulses = 0;
 // vector<double> vlivetime;
 
+TH1D* h_sum;
 // Simpson Integral
 double SimpsIntegral(const vector<float>& samples, double baseline, int start, int end)
 {
@@ -197,12 +198,12 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 	double temp_charge = 0;
 	double temp_ten_charge = 0;
 	double pulse_height_thresh = pth * rms;
-	npulses = 0;
-	skipevent = false;
 	// cout<<" vector size is : "<<v.size()<<endl;
 	// getchar();
 	// Let's looking for the Pulses
-	for (int i = baseline_samples_set; i < v.size() - windowSize; i++)
+	npulses = 0;
+	skipevent = false;
+	for (int i = 0; i < v.size() - windowSize; i++)
 	{
 		// std::cout << "Sample " << i << std::endl;
 		double integral = SimpsIntegral(v, b, i, i + windowSize);
@@ -352,20 +353,21 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 			if (max < pulse_height_thresh)
 				continue;
 
-			startv.push_back(temp_startv);
-			endv.push_back(temp_endv);
+			npulses++;
 			if (signal_start)
 			{
-				npulses++;
+				startv.push_back(temp_startv);
+				endv.push_back(temp_endv);
+
 				amplitude[npulses - 1] = max;
 				amplitude_position[npulses - 1] = temp_peak * timescale;
 				pl[npulses - 1] = (left - triggerStartSam) * timescale;
 				pr[npulses - 1] = (right - triggerStartSam) * timescale;
-				charge_v[npulses - 1] = 1e2 * timescale * SimpsIntegral(v, b, left, right) / resistance;
+				charge_v[npulses - 1] = 1e3 * timescale * SimpsIntegral(v, b, left, right) / resistance;
 
 				CalibratedTime[npulses - 1] = timescale * (temp_peak - triggerStartSam);
-				// windowratio[npulses - 1] = dratio;
-				// pulsebaseline_rms[npulses - 1] = rms;
+				// windowratio[npulses-1] =dratio;
+				// pulsebaseline_rms[npulses-1] =rms;
 				// event_n[npulses-1]=current_sweep;
 				biggeststep[npulses - 1] = temp_bigstep;
 				pulse_length05[npulses - 1] = tempq05 * timescale;
@@ -396,11 +398,10 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 				triggerPosition = (temp_peak - left) * timescale + start_time;
 				triggerWidth = timescale * (right - left);
 			}
+			if (!signal_start && npulses > 1)
+				continue;
 			pulse_left_edge.push_back(left);
 			pulse_right_edge.push_back(right);
-
-			if (!signal_start)
-				break;
 
 		} // if statement
 	}
@@ -461,6 +462,7 @@ double Trigger_info(vector<float> waveform)
 	{
 		time = (pulse_left_edge[0]);
 	}
+	nTrigs = npulses;
 	pulse_left_edge.clear();
 	pulse_right_edge.clear();
 	trigbaselinev.clear();
@@ -478,8 +480,10 @@ void getwaveform(vector<float>& v, int evt, PyArrayObject* arr, float mult = 1, 
 	for (int i = 0; i < number_of_samples; i++)
 	{
 		// cout << "reading sample " << i << endl;
-		datum = *reinterpret_cast<short*>(PyArray_GETPTR2(arr, evt, i));
-		datum *= mult / (double)adc_per_Volt;
+		// std::cout << "hi" << std::endl;
+		datum = *((npy_double*)(PyArray_GETPTR2(arr, evt, i)));
+		// std::cout << "bi" << std::endl;
+		datum *= mult;
 		v.push_back(datum);
 		if (i < baseline_samples_set)
 		{
@@ -490,6 +494,7 @@ void getwaveform(vector<float>& v, int evt, PyArrayObject* arr, float mult = 1, 
 		}
 	}
 }
+
 int calcnumchannels(int mask)
 {
 	int numchans = 0;
@@ -512,7 +517,9 @@ static void show_usage(string name)
 	     << " -invert: invert waveform\n"
 	     << " -trigger : invert trigger pulse \n"
 	     << " -pt : pulse threshold\n"
+	     << " -tri : Traiangle smoothing enabled\n"
 	     << " -debug : Get in the debugging mode.\n"
+	     << " -sit : number of smoothing interation\n"
 	     << " -h or --help : Show the usage\n"
 	     << " Enjoy ! -Ryan Wang" << endl;
 }
@@ -524,9 +531,9 @@ int main(int argc, char* argv[])
 	string baseline_file;
 	std::string pydir;
 
-	bool use_trigger = false;
-	bool trigger_inversion = false;
-	bool invert_waveform = false;
+	bool use_trigger = true;
+	bool trigger_inversion = true;
+	bool invert_waveform = true;
 
 	int num_sams = 0;
 	int trig_channel;
@@ -600,6 +607,33 @@ int main(int argc, char* argv[])
 		{
 			debug_mode = true;
 		}
+		else if (arg == "-s")
+		{
+			smoothing = true;
+		}
+		else if (arg == "-box")
+		{
+			boxsmoothing = true;
+			smoothing = true;
+		}
+		else if (arg == "-mwin")
+		{
+			MovingWindowSize = atoi(argv[i + 1]);
+		}
+		else if (arg == "-roll")
+		{
+			rolling = true;
+			smoothing = true;
+		}
+		else if (arg == "-tri")
+		{
+			triangle = true;
+			smoothing = true;
+		}
+		else if (arg == "-sit")
+		{
+			iteration = atoi(argv[i + 1]);
+		}
 		else if (arg == "-pydir")
 		{
 			pydir = argv[i + 1];
@@ -645,33 +679,78 @@ int main(int argc, char* argv[])
 	PyObject* pName = PyUnicode_FromString("ReadNpyfiles");
 	PyObject* pModule = PyImport_Import(pName);
 	PyArrayObject* pData = NULL;
+	PyArrayObject* pXData = NULL;
+	PyArrayObject* pTrig = NULL;
 	Py_DECREF(pName);
+	Py_DECREF(sysPath);
 	int nd1 = 0, nd2 = 0;
 	if (pModule != NULL)
 	{
 		std::cout << "Py Module Found" << std::endl;
 
 		// Get function from module
-		PyObject* pFunc = PyObject_GetAttrString(pModule, "loadnpyfile");
+		PyObject* pFunc = PyObject_GetAttrString(pModule, "loadpklfile");
 		if (pFunc && PyCallable_Check(pFunc))
 		{
-			PyObject* pargs = PyTuple_New(1);
+			PyObject* pargs = PyTuple_New(2);
 			PyObject* pval = NULL;
 			pval = PyUnicode_FromFormat("%s", open_filename);
 			PyTuple_SetItem(pargs, 0, pval);
-
-			pval = PyObject_CallObject(pFunc, pargs);
+			pval = PyLong_FromLong(wform_channel);
+			PyTuple_SetItem(pargs, 1, pval);
+			if (pargs != NULL)
+				pval = PyObject_CallObject(pFunc, pargs);
+			else
+				pval = 0;
 			if (pval != NULL && PyTuple_Check(pval))
 			{
 				// PyObject *pTemp = PyTuple_GetItem(pval, 0);
 				PyObject* p1 = 0;
 				p1 = PyTuple_GetItem(pval, 0);
-				pData = reinterpret_cast<PyArrayObject*>(PyArray_FromObject(p1, NPY_INT16, 1, 2));
-				nd1 = PyLong_AsLong(PyTuple_GetItem(pval, 1));
-				nd2 = PyLong_AsLong(PyTuple_GetItem(pval, 2));
-				npy_intp* pshape = PyArray_SHAPE(pData);
+				// pXData = reinterpret_cast<PyArrayObject*>(p1);
+				pXData = reinterpret_cast<PyArrayObject*>(PyArray_FromObject(p1, NPY_FLOAT64, 1, 1));
+				p1 = PyTuple_GetItem(pval, 1);
+				pTrig = reinterpret_cast<PyArrayObject*>(PyArray_FromObject(p1, NPY_FLOAT64, 1, 2));
+				p1 = PyTuple_GetItem(pval, 2);
+				pData = reinterpret_cast<PyArrayObject*>(PyArray_FromObject(p1, NPY_FLOAT64, 1, 2));
+				// pData2 = reinterpret_cast<PyArrayObject*>(PyTuple_GetItem(pval, 3));
+				if (pTrig != NULL && pXData != NULL && pData != NULL)
+				{
+					npy_intp* pshape = PyArray_SHAPE(pXData);
+					int indx = pshape[0] - 1;
+					timescale = *((double*)PyArray_GETPTR1(pXData, indx));
+					start_time = *((double*)PyArray_GETPTR1(pXData, 0));
+					// std::cout << "Start Time is " << start_time / ns << " ns" << std::endl;
+					// std::cout << "End Time at index " << indx << " is " << timescale / ns << " ns" << std::endl;
+					timescale -= start_time;
+					timescale *= 1.0 / (double)pshape[0];
+					timescale *= 1.0 / ns;
+					start_time *= 1.0 / ns;
+					// std::cout << "Start Time is " << start_time << " ns" << std::endl;
+					std::cout << "Time Scale is " << timescale << " ns per sample" << std::endl;
+					std::cout << "X Array has " << PyArray_NDIM(pXData) << " dims and " << pshape[0] << " Elements" << std::endl;
+					int ndim;
 
-				std::cout << "Array has " << PyArray_NDIM(pData) << " dims and " << pshape[0] << " x " << pshape[1] << " Elements" << std::endl;
+					pshape = PyArray_SHAPE(pTrig);
+					ndim = PyArray_NDIM(pTrig);
+					std::cout << "Trig Array has " << ndim << " dims and " << pshape[0];
+					for (int idims = 1; idims < ndim; idims++)
+						std::cout << " x " << pshape[idims];
+					std::cout << " Elements" << std::endl;
+					number_of_samples = pshape[1];
+					Nevts = pshape[0];
+					pshape = PyArray_SHAPE(pData);
+					ndim = PyArray_NDIM(pData);
+
+					std::cout << "Data Array has " << ndim << " dims and " << pshape[0];
+					for (int idims = 1; idims < ndim; idims++)
+						std::cout << " x " << pshape[idims];
+					std::cout << " Elements" << std::endl;
+
+					Py_INCREF(pData);
+					Py_INCREF(pTrig);
+					// Py_XDECREF(pXData);
+				}
 				// cout << "Array is int? " << PyArray_ISINTEGER(pData) << endl;
 				// Py_XDECREF(pTemp);
 			}
@@ -680,7 +759,7 @@ int main(int argc, char* argv[])
 				PyErr_Print();
 				std::cout << "Failed to get result" << std::endl;
 			}
-			Py_XINCREF(pData);
+
 			Py_XDECREF(pval);
 			Py_DECREF(pargs);
 		}
@@ -699,15 +778,14 @@ int main(int argc, char* argv[])
 		std::cout << "Failed to load module" << std::endl;
 	}
 	// cout << "Typechecking pData" << endl;
-	if (pData == NULL)
+	if (pData == NULL || pTrig == NULL)
 	{
 		std::cout << "Failed to read data file. Exiting" << std::endl;
 		Py_FinalizeEx();
 		return -1;
 	}
+	//	Py_XDECREF(pXData);
 
-	number_of_samples = nd2;
-	Nevts = nd1;
 	// Plots for debugging pulse finding algorithm
 	TGraph* t11;
 	TGraph* t22;
@@ -724,7 +802,7 @@ int main(int argc, char* argv[])
 	cout << " Out put filename is : " << out_filename << endl;
 	TFile* fout = new TFile(out_filename, "RECREATE");
 
-	TH1D* h_sum = new TH1D(("ADC_sum_waveform" + filename).c_str(), ("#font[132]{WFD " + filename + " SumWaveForm}").c_str(), 10000, 0, 10000);
+	h_sum = new TH1D(("ADC_sum_waveform" + filename).c_str(), ("#font[132]{WFD " + filename + " SumWaveForm}").c_str(), 10000, 0, 10000);
 	h_sum->SetXTitle("#font[132]{Sample (2ns)}");
 	h_sum->GetXaxis()->SetLabelFont(132);
 	h_sum->GetYaxis()->SetLabelFont(132);
@@ -733,7 +811,7 @@ int main(int argc, char* argv[])
 	// dark_hits->SetBit(TH1::kCanRebin);
 
 	// Create Tree to store properties of pulses found by pulse finder
-	float waveforms[8192];
+	float waveforms[10001];
 	float trigger_t;
 	double livetime;
 	TTree* event = new TTree("event", "Event tree");
@@ -758,6 +836,7 @@ int main(int argc, char* argv[])
 	event->Branch("fPulseLength05", pulse_length05, "pulse_length05[npulses]/F");
 	event->Branch("fPulseLength1", pulse_length1, "pulse_length1[npulses]/F");
 	event->Branch("fPulseLength5", pulse_length5, "pulse_length5[npulses]/F");
+	// event->Branch("fPulseLength10", pulse_length10, "pulse_length10[npulses]/F");
 	event->Branch("fPulseLength25", pulse_length25, "pulse_length25[npulses]/F");
 	event->Branch("fPulseLength50", pulse_length50, "pulse_length50[npulses]/F");
 	event->Branch("fPulseLength75", pulse_length75, "pulse_length75[npulses]/F");
@@ -768,7 +847,7 @@ int main(int argc, char* argv[])
 
 	if (use_trigger)
 	{
-		// event->Branch("nTriggers", &nTrigs, "nTriggers/I");
+		event->Branch("nTriggers", &nTrigs, "nTriggers/I");
 		event->Branch("fTriggerStart", &triggerStart, "triggerStart/F");
 		event->Branch("fTriggerStartSam", &triggerStartSam, "triggerStartSam/F");
 		event->Branch("fTriggerRising05", &triggerRising05, "triggerRising05/F");
@@ -781,7 +860,6 @@ int main(int argc, char* argv[])
 	// Store the waveform plot for debugging
 	TCanvas* waveplot;
 	vector<float> baseline_sweep;
-	vector<float> trigwaveform;
 
 	for (int sweep = 0; sweep < Nevts; sweep++)
 	{
@@ -802,19 +880,19 @@ int main(int argc, char* argv[])
 		if (sweep % 100 == 0)
 		{
 			cout << " This is sweep : " << sweep << endl;
-			cout << " Trigger time: " << trigger_t << endl;
 		}
 		current_sweep = sweep;
 
 		if (use_trigger)
 		{
 			signal_start = false;
-			getwaveform(trigwaveform, sweep, pData, (trigger_inversion ? -1.0 : 1.0), true);
+			getwaveform(trigwaveform, sweep, pTrig, (trigger_inversion ? -1.0 : 1.0), true);
 			trigger_t = Trigger_info(trigwaveform);
 			trigwaveform.clear();
 		}
 
 		signal_start = true;
+
 		// cout << "reading Waveform" << endl;
 		getwaveform(raw_waveform, sweep, pData, (invert_waveform ? -1.0 : 1.0));
 		// cout << "Waveform read" << endl;
@@ -822,7 +900,6 @@ int main(int argc, char* argv[])
 		std::copy(raw_waveform.begin(), raw_waveform.end(), waveforms);
 		// wforms_tree->Fill();
 		// nPulses = 0.0;
-		npulses = 0;
 		double thisbase;
 		rms_value = (use_basefile ? fixedrms : 0);
 
@@ -831,7 +908,7 @@ int main(int argc, char* argv[])
 
 		if (debug_mode)
 		{
-			cout << " basline is  : " << rms_value << " rms is : " << thisbase << endl;
+			cout << " basline is  : " << thisbase << " rms is : " << rms_value << endl;
 			getchar();
 		}
 
@@ -841,10 +918,10 @@ int main(int argc, char* argv[])
 		// event_time.push_back(number_of_samples);
 		baseline_sweep.push_back(thisbase); // save baseline for checking baseline shifting
 		double drate = npulses;
-
-		drate *= 1.0 / (double)(1e-8 * number_of_samples);
+		drate *= 1.0 / (double)(timescale * ns * number_of_samples);
 		dark_hits->Fill(drate);
 		baselinev.clear();
+
 		for (int sam = 0; sam < number_of_samples; sam++)
 		{
 			h_sum->Fill(sam, raw_waveform[sam] - thisbase);
@@ -855,27 +932,27 @@ int main(int argc, char* argv[])
 			t11 = new TGraph();
 			t22 = new TGraph();
 			t33 = new TGraph();
-			t55 = new TGraph();
+			double rmax = 0, rmin = 1e16;
 			for (int j = 0; j < (int)pulse_left_edge.size(); j++)
 			{
-				t22->SetPoint(j, pulse_left_edge[j], startv[j]);
-				t33->SetPoint(j, pulse_right_edge[j], endv[j]);
+				t22->SetPoint(j, pulse_left_edge[j] * timescale, startv[j]);
+				t33->SetPoint(j, pulse_right_edge[j] * timescale, endv[j]);
 			}
 			for (int sam = 0; sam < number_of_samples; sam++)
 			{
-				t11->SetPoint(sam, sam, raw_waveform[sam]);
-				if (smoothing)
-				{
-					if (sam < (int)smoothingv.size())
-						t55->SetPoint(sam, sam, smoothingv[sam]);
-				}
+				t11->SetPoint(sam, sam * timescale, raw_waveform[sam]);
+				if (std::fabs(raw_waveform[sam]) > rmax)
+					rmax = std::fabs(raw_waveform[sam]);
+				if (raw_waveform[sam] < rmin)
+					rmin = raw_waveform[sam];
 			}
 			char plotname[30];
 			sprintf(plotname, "waveform%d", sweep);
 			waveplot = new TCanvas(plotname);
-			TLine* line = new TLine(0, rms_value, number_of_samples, rms_value);
-			TLine* line2 = new TLine(0, rms_value - thisbase, number_of_samples, rms_value - thisbase);
-			TLine* line3 = new TLine(0, rms_value + thisbase, number_of_samples, rms_value + thisbase);
+			TLine* line = new TLine(0, thisbase, number_of_samples * timescale, thisbase);
+			TLine* line2 = new TLine(0, -rms_value + thisbase, number_of_samples * timescale, -rms_value + thisbase);
+			TLine* line3 = new TLine(0, rms_value + thisbase, number_of_samples * timescale, rms_value + thisbase);
+
 			line->SetLineColor(3);
 			line->SetLineStyle(3);
 			line->SetLineWidth(3);
@@ -891,14 +968,20 @@ int main(int argc, char* argv[])
 			t33->SetMarkerColor(4);
 			t33->SetMarkerStyle(3);
 			t33->SetMarkerSize(3);
-			t55->SetLineColor(2);
 			t11->Draw("alp");
 			t22->Draw("p");
 			t33->Draw("p");
-			t55->Draw("lp");
 			line->Draw("");
 			line2->Draw("");
 			line3->Draw("");
+			if (use_trigger)
+			{
+				TLine* line4 = new TLine(triggerStartSam * timescale, rmax, triggerStartSam * timescale, rmin * 1.1);
+				line4->SetLineColor(46);
+				line4->SetLineStyle(3);
+				line4->SetLineWidth(3);
+				line4->Draw("");
+			}
 			waveplot->Write();
 			cout << " plotting the waveform, this is sweep : " << sweep << endl;
 		}
@@ -909,10 +992,15 @@ int main(int argc, char* argv[])
 		raw_waveform.clear();
 		// skip += ;
 	}
-
+	// PyArray_XDECREF(pData);
+	// PyArray_XDECREF(pXData);
+	// PyArray_XDECREF(pTrig);
+	// Py_XDECREF(pData);
+	// Py_XDECREF(pXData);
+	// Py_XDECREF(pTrig);
 	Py_FinalizeEx();
 
-	cout << " after tree fill ! " << endl;
+	// cout << " after tree fill ! " << endl;
 	TGraph* baseline_plot = new TGraph();
 	for (int i = 0; i < (int)baseline_sweep.size(); i++)
 	{
@@ -923,11 +1011,10 @@ int main(int argc, char* argv[])
 	baseline_plot->SetMarkerStyle(22);
 	baseline_plot->Draw("AP");
 
-	TObject* nosinfo = new TObject();
-	nosinfo->SetUniqueID(number_of_samples);
+	// TObject* nosinfo = new TObject();
+	// nosinfo->SetUniqueID(number_of_samples);
 
 	cout << " Total sweeps is : " << Nevts << endl;
-
 	h_sum->Scale(1.0 / (double)Nevts);
 	event->Write();
 	bplot->Write();

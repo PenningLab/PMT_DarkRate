@@ -257,29 +257,24 @@ int main(int argc, char* argv[])
 	TH2F* h_avgphd = new TH2F("h_avgphd", "Average Pulse;Sample (10ns);ADC counts", 8192, 0, 8192, 2 * 8192, -8192 + shift, 8192 + shift);
 
 	cout << "start looping" << endl;
-	for (int i = initial_run; i < number_of_files; i++)
+	// for (int i = initial_run; i < number_of_files; i++)
+	//{
+	char root_file_name[320];
+	sprintf(root_file_name, "%s/%s", working_dir.c_str(), filename.c_str());
+	cout << "Reading in files " << root_file_name << endl;
+	TChain* tree = new TChain("event");
+	int checkker = tree->Add(root_file_name);
+	// TFile* fin = new TFile(root_file_name, "READ");
+	if (checkker <= 0 || tree->GetEntries() <= 0)
 	{
-		char root_file_name[320];
-		sprintf(root_file_name, "%s/%u_%s", working_dir.c_str(), i, filename.c_str());
-		cout << "Reading in file " << i << endl;
-		TTree* tree;
-		TFile* fin = new TFile(root_file_name, "READ");
-		if (fin == NULL || fin->IsZombie())
-		{
-			cout << " File is corrupted ! " << endl;
-			dark_count.push_back(-1);
-			dark_count_error.push_back(-1);
-			continue;
-		}
-		else
-		{
-			tree = (TTree*)fin->Get("event");
-		}
-
+		cout << " File is corrupted ! " << endl;
+	}
+	else
+	{
 		// double nos = fin->Get("Nsamples")->GetUniqueID();
-		TH1F* dark_hit = (TH1F*)fin->Get("dark_hits");
-		dark_count.push_back(dark_hit->GetMean());
-		dark_count_error.push_back(dark_hit->GetMeanError());
+		// TH1F* dark_hit = (TH1F*)fin->Get("dark_hits");
+		// dark_count.push_back(dark_hit->GetMean());
+		// dark_count_error.push_back(dark_hit->GetMeanError());
 		float waveforms[8192];
 		cout << " Loading tree branches" << endl;
 		tree->SetBranchAddress("nSamples", &number_of_samples);
@@ -337,43 +332,22 @@ int main(int argc, char* argv[])
 			{
 				int initialsam = (use_trigger ? (pl[k] + fTriggerStartSam) : pl[k]);
 				int finalsam = (use_trigger ? (pr[k] + fTriggerStartSam) : pr[k]);
+				if (initialsam > 1200 && initialsam < 1180)
+					continue;
 				for (int ns = fmax(initialsam - 10, 0); ns < fmin(finalsam + 11, nSamples); ns++)
 				{
 					h_avgphd->Fill(ns, waveforms[ns] * 8192);
 				}
 			}
 		}
-		std::cout << " Finished processing file No. " << i << std::endl;
-		fin->Close();
-	} // main for loop
-	fout->cd();
+		// fin->Close();
+		//} // main for loop
+		fout->cd();
 
-	TGraphErrors* dark_plot = new TGraphErrors();
-	int backcount = 0;
-	for (int h = 0; h < dark_count.size(); h++)
-	{
-		double temp_dark_rate = dark_count[h];
-		double temp_dark_rate_error = dark_count_error[h];
-		if (temp_dark_rate < 0)
-		{
-			backcount++;
-			continue;
-		}
-		dark_plot->SetPoint(h - backcount, h, temp_dark_rate);
-		dark_plot->SetPointError(h - backcount, 0, temp_dark_rate_error);
+		h_avgphd->Write();
+		event->Write();
 	}
 
-	dark_plot->SetName("dark_plot");
-	dark_plot->SetTitle(";Run (100s);Dark Rate (Hz)");
-	TCanvas* cdark = new TCanvas("cdark", "cdark");
-	dark_plot->SetMarkerStyle(24);
-	dark_plot->SetMarkerColor(2);
-	dark_plot->Draw("AP");
-
-	h_avgphd->Write();
-	dark_plot->Write();
-	cdark->Write();
-	event->Write();
 	fout->Write();
 	fout->Close();
 	return 0;
