@@ -12,7 +12,7 @@
 
 */
 /////////////////////////////////////////////////////////////////////////////////////////
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+//#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 
 #include <cstdio>
 #include <cstdlib>
@@ -214,7 +214,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 
 		double temp_bigstep = 0;
 
-		if (integral > pThresh)
+		if (std::fabs(integral) > pThresh)
 		{
 			if (debug_mode)
 			{
@@ -222,7 +222,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 			}
 			left = i;
 			integral = 1.0e9;
-			while (integral > eThresh && left > windowSize)
+			while (std::fabs(integral) > eThresh && left > windowSize)
 			{
 				left--;
 				integral = SimpsIntegral(v, b, left, left + windowSize);
@@ -243,7 +243,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 			bool end = false;
 			while (!end)
 			{
-				while (integral > eThresh && right < nos - 1)
+				while (std::fabs(integral) > eThresh && right < nos - 1)
 				{
 					right++;
 					integral = SimpsIntegral(v, b, right - windowSize, right);
@@ -262,7 +262,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 				{
 					r++;
 					integral = SimpsIntegral(v, b, r - windowSize, r);
-					if (integral > pThresh)
+					if (std::fabs(integral) > pThresh)
 					{
 						right = r;
 						end = false;
@@ -282,11 +282,11 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 			for (int j = left; j < right; j++)
 			{
 				double s = v[j] - b;
-				if (s > max)
+				if (std::fabs(s) > max)
 				{
 					max = s;
 					temp_peak = j;
-					if (j > 0 && (v[j] - v[j - 1]) > temp_bigstep)
+					if (j > 0 && std::fabs(v[j] - v[j - 1]) > temp_bigstep)
 						temp_bigstep = v[j] - v[j - 1];
 				}
 				// if((right-j)<(temp_peak-left))
@@ -313,43 +313,14 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 			if (right > nos)
 				continue;
 
-			/*// noise veto
-			float width = (right - left);
-			float nwidth = 2 * width;
-			int nright = right + nwidth;
-			int nleft = left - nwidth;
-			if (nright > nos)
-			{
-			    nright = nos;
-			    nleft -= (nleft > nwidth ? nwidth : 0);
-			}
-			if (nleft < 0)
-			{
-			    nleft = 0;
-			    nright += (nright < (nos - nwidth) ? nwidth : nos);
-			}
-			double dratio
-			    = SimpsIntegral(v, b, nleft, nright) / (((nwidth + 1) / width) * SimpsIntegral(v, b, left, right));
-			*/
-			// cout<<" Peak is : "<<temp_peak<<" max is : "<<max<<endl;
-
-			// if (temp_peak>0 &&temp_peak<8000){
-			// if (thischarge<1.0)
-			// if (trig)
-			//	break;
-
-			//}
-			// cout<<" This is sample : "<<i<<" Charge integral is :
-			// "<<SimpsIntegral(v,b,left,right)<<endl;
-
-			if (SimpsIntegral(v, b, left, right) <= eThresh)
+			if (std::fabs(SimpsIntegral(v, b, left, right)) <= eThresh)
 			{
 				i = right - 1;
 				continue;
 			}
 			i = right;
 
-			if (max < pulse_height_thresh)
+			if (std::fabs(max) < pulse_height_thresh)
 				continue;
 
 			startv.push_back(temp_startv);
@@ -361,7 +332,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 				amplitude_position[npulses - 1] = temp_peak * timescale;
 				pl[npulses - 1] = (left - triggerStartSam) * timescale;
 				pr[npulses - 1] = (right - triggerStartSam) * timescale;
-				charge_v[npulses - 1] = 1e2 * timescale * SimpsIntegral(v, b, left, right) / resistance;
+				charge_v[npulses - 1] = 1e4 * timescale * SimpsIntegral(v, b, left, right) / resistance;
 
 				CalibratedTime[npulses - 1] = timescale * (temp_peak - triggerStartSam);
 				// windowratio[npulses - 1] = dratio;
@@ -725,7 +696,7 @@ int main(int argc, char* argv[])
 	TFile* fout = new TFile(out_filename, "RECREATE");
 
 	TH1D* h_sum = new TH1D(("ADC_sum_waveform" + filename).c_str(), ("#font[132]{WFD " + filename + " SumWaveForm}").c_str(), 10000, 0, 10000);
-	h_sum->SetXTitle("#font[132]{Sample (2ns)}");
+	h_sum->SetXTitle("#font[132]{Sample (10ns)}");
 	h_sum->GetXaxis()->SetLabelFont(132);
 	h_sum->GetYaxis()->SetLabelFont(132);
 	// Tetsing the dark hit counter
@@ -819,7 +790,7 @@ int main(int argc, char* argv[])
 		getwaveform(raw_waveform, sweep, pData, (invert_waveform ? -1.0 : 1.0));
 		// cout << "Waveform read" << endl;
 
-		std::copy(raw_waveform.begin(), raw_waveform.end(), waveforms);
+		// std::copy(raw_waveform.begin(), raw_waveform.end(), waveforms);
 		// wforms_tree->Fill();
 		// nPulses = 0.0;
 		npulses = 0;
@@ -837,6 +808,11 @@ int main(int argc, char* argv[])
 
 		event_baseline = thisbase;
 		event_rms = rms_value;
+		for (int sam = 0; sam < number_of_samples; sam++)
+		{
+			h_sum->Fill(sam, raw_waveform[sam] - thisbase);
+			waveforms[sam] = raw_waveform[sam] - thisbase;
+		}
 		event->Fill();
 		// event_time.push_back(number_of_samples);
 		baseline_sweep.push_back(thisbase); // save baseline for checking baseline shifting
@@ -845,17 +821,14 @@ int main(int argc, char* argv[])
 		drate *= 1.0 / (double)(1e-8 * number_of_samples);
 		dark_hits->Fill(drate);
 		baselinev.clear();
-		for (int sam = 0; sam < number_of_samples; sam++)
-		{
-			h_sum->Fill(sam, raw_waveform[sam] - thisbase);
-		}
+
 		// fill canvases
 		if (sweep < 100)
 		{
 			t11 = new TGraph();
 			t22 = new TGraph();
 			t33 = new TGraph();
-			t55 = new TGraph();
+			// t55 = new TGraph();
 			for (int j = 0; j < (int)pulse_left_edge.size(); j++)
 			{
 				t22->SetPoint(j, pulse_left_edge[j], startv[j]);
@@ -864,17 +837,12 @@ int main(int argc, char* argv[])
 			for (int sam = 0; sam < number_of_samples; sam++)
 			{
 				t11->SetPoint(sam, sam, raw_waveform[sam]);
-				if (smoothing)
-				{
-					if (sam < (int)smoothingv.size())
-						t55->SetPoint(sam, sam, smoothingv[sam]);
-				}
 			}
 			char plotname[30];
 			sprintf(plotname, "waveform%d", sweep);
 			waveplot = new TCanvas(plotname);
-			TLine* line = new TLine(0, rms_value, number_of_samples, rms_value);
-			TLine* line2 = new TLine(0, rms_value - thisbase, number_of_samples, rms_value - thisbase);
+			TLine* line = new TLine(0, thisbase, number_of_samples, thisbase);
+			TLine* line2 = new TLine(0, -rms_value + thisbase, number_of_samples, -rms_value + thisbase);
 			TLine* line3 = new TLine(0, rms_value + thisbase, number_of_samples, rms_value + thisbase);
 			line->SetLineColor(3);
 			line->SetLineStyle(3);
@@ -891,11 +859,11 @@ int main(int argc, char* argv[])
 			t33->SetMarkerColor(4);
 			t33->SetMarkerStyle(3);
 			t33->SetMarkerSize(3);
-			t55->SetLineColor(2);
+			// t55->SetLineColor(2);
 			t11->Draw("alp");
 			t22->Draw("p");
 			t33->Draw("p");
-			t55->Draw("lp");
+			// t55->Draw("lp");
 			line->Draw("");
 			line2->Draw("");
 			line3->Draw("");

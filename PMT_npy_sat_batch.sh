@@ -125,11 +125,11 @@ fi
  fi
  echo "${cmdarr[@]}"
  "${cmdarr[@]}"
- if [[ ! -d RochesterPulses/SPE_${pth}Sig_${win}Win ]];then
-  mkdir RochesterPulses/SPE_${pth}Sig_${win}Win
+ if [[ ! -d RochesterPulses/Saturation_${pth}Sig_${win}Win ]];then
+  mkdir RochesterPulses/Saturation_${pth}Sig_${win}Win
  fi
  if [[ -f ${dirname}/${fnameout} ]];then
-  mv ${dirname}/${fnameout} RochesterPulses/SPE_${pth}Sig_${win}Win/${fnameout}
+  mv ${dirname}/${fnameout} RochesterPulses/Saturation_${pth}Sig_${win}Win/${fnameout}
  fi
  #echo "file ${j} complete"
 done

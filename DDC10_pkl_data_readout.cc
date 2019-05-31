@@ -215,7 +215,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 
 		double temp_bigstep = 0;
 
-		if (integral > pThresh)
+		if (std::fabs(integral) > pThresh)
 		{
 			if (debug_mode)
 			{
@@ -223,7 +223,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 			}
 			left = i;
 			integral = 1.0e9;
-			while (integral > eThresh && left > windowSize)
+			while (std::fabs(integral) > eThresh && left > windowSize)
 			{
 				left--;
 				integral = SimpsIntegral(v, b, left, left + windowSize);
@@ -244,7 +244,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 			bool end = false;
 			while (!end)
 			{
-				while (integral > eThresh && right < nos - 1)
+				while (std::fabs(integral) > eThresh && right < nos - 1)
 				{
 					right++;
 					integral = SimpsIntegral(v, b, right - windowSize, right);
@@ -263,7 +263,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 				{
 					r++;
 					integral = SimpsIntegral(v, b, r - windowSize, r);
-					if (integral > pThresh)
+					if (std::fabs(integral) > pThresh)
 					{
 						right = r;
 						end = false;
@@ -283,11 +283,11 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 			for (int j = left; j < right; j++)
 			{
 				double s = v[j] - b;
-				if (s > max)
+				if (std::fabs(s) > max)
 				{
 					max = s;
 					temp_peak = j;
-					if (j > 0 && (v[j] - v[j - 1]) > temp_bigstep)
+					if (j > 0 && std::fabs(v[j] - v[j - 1]) > temp_bigstep)
 						temp_bigstep = v[j] - v[j - 1];
 				}
 				// if((right-j)<(temp_peak-left))
@@ -314,43 +314,14 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 			if (right > nos)
 				continue;
 
-			/*// noise veto
-			float width = (right - left);
-			float nwidth = 2 * width;
-			int nright = right + nwidth;
-			int nleft = left - nwidth;
-			if (nright > nos)
-			{
-			    nright = nos;
-			    nleft -= (nleft > nwidth ? nwidth : 0);
-			}
-			if (nleft < 0)
-			{
-			    nleft = 0;
-			    nright += (nright < (nos - nwidth) ? nwidth : nos);
-			}
-			double dratio
-			    = SimpsIntegral(v, b, nleft, nright) / (((nwidth + 1) / width) * SimpsIntegral(v, b, left, right));
-			*/
-			// cout<<" Peak is : "<<temp_peak<<" max is : "<<max<<endl;
-
-			// if (temp_peak>0 &&temp_peak<8000){
-			// if (thischarge<1.0)
-			// if (trig)
-			//	break;
-
-			//}
-			// cout<<" This is sample : "<<i<<" Charge integral is :
-			// "<<SimpsIntegral(v,b,left,right)<<endl;
-
-			if (SimpsIntegral(v, b, left, right) <= eThresh)
+			if (std::fabs(SimpsIntegral(v, b, left, right)) <= eThresh)
 			{
 				i = right - 1;
 				continue;
 			}
 			i = right;
 
-			if (max < pulse_height_thresh)
+			if (std::fabs(max) < pulse_height_thresh)
 				continue;
 
 			npulses++;
@@ -606,33 +577,6 @@ int main(int argc, char* argv[])
 		else if (arg == "-debug")
 		{
 			debug_mode = true;
-		}
-		else if (arg == "-s")
-		{
-			smoothing = true;
-		}
-		else if (arg == "-box")
-		{
-			boxsmoothing = true;
-			smoothing = true;
-		}
-		else if (arg == "-mwin")
-		{
-			MovingWindowSize = atoi(argv[i + 1]);
-		}
-		else if (arg == "-roll")
-		{
-			rolling = true;
-			smoothing = true;
-		}
-		else if (arg == "-tri")
-		{
-			triangle = true;
-			smoothing = true;
-		}
-		else if (arg == "-sit")
-		{
-			iteration = atoi(argv[i + 1]);
 		}
 		else if (arg == "-pydir")
 		{

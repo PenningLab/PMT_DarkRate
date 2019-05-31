@@ -196,6 +196,7 @@ int main(int argc, char* argv[])
 	float triggerStartSam;
 	float triggerRising1;
 	float triggerRising5;
+	float triggerRising05;
 	float triggerPosition;
 	float triggerWidth;
 
@@ -206,8 +207,9 @@ int main(int argc, char* argv[])
 	float livetime;
 	float event_rate;
 	int npulses = 0;
+	bool fillt = true;
 
-	TTree* event = new TTree("event", "event");
+	TTree* event = new TTree("Event", "Event");
 	std::cout << "\nCreating output file" << std::endl;
 	event->Branch("nSamples", &number_of_samples, "number_of_samples/I");
 	if (stored_livetime)
@@ -218,7 +220,7 @@ int main(int argc, char* argv[])
 	event->Branch("fCharge_pC", &event_charge, "event_charge/F");
 	event->Branch("fChargePrompt_pC", &event_charge_ten, "event_charge_ten/F");
 	event->Branch("fBaseline_V", &event_baseline, "event_baseline/F");
-
+	event->Branch("bIsGood", &fillt, "fillt/O");
 	event->Branch("nPulses", &npulses, "npulses/I");
 	event->Branch("fPulseHeight_V", amplitude, "amplitude[npulses]/F");
 	event->Branch("fPulseRightEdge", pr, "pr[npulses]/F");
@@ -254,7 +256,12 @@ int main(int argc, char* argv[])
 	// int run=0;
 	vector<double> dark_count;
 	vector<double> dark_count_error;
-	TH2F* h_avgphd = new TH2F("h_avgphd", "Average Pulse;Sample (10ns);ADC counts", 8192, 0, 8192, 2 * 8192, -8192 + shift, 8192 + shift);
+	TH1F* h_avgphd = new TH1F("h_avgphd", "Average Pulse;Sample (10ns);ADC counts", 8192, 0, 8192);
+	h_avgphd->Sumw2();
+	TH1D* h_sum = new TH1D("ADC_sum_waveform", ("#font[132]{WFD SumWaveForm}"), 10000, 0, 10000);
+	h_sum->SetXTitle("#font[132]{Sample (10ns)}");
+	h_sum->GetXaxis()->SetLabelFont(132);
+	h_sum->GetYaxis()->SetLabelFont(132);
 
 	cout << "start looping" << endl;
 	// for (int i = initial_run; i < number_of_files; i++)
@@ -293,6 +300,8 @@ int main(int argc, char* argv[])
 		tree->SetBranchAddress("fPulsePeakTime", amplitude_position);
 		tree->SetBranchAddress("fCalibratedTime", CalibratedTime);
 		tree->SetBranchAddress("fBigStep", biggeststep);
+		tree->SetBranchAddress("fPulseLength05", pulse_length05);
+		tree->SetBranchAddress("fPulseLength1", pulse_length1);
 		tree->SetBranchAddress("fPulseLength5", pulse_length5);
 		tree->SetBranchAddress("fPulseLength25", pulse_length25);
 		tree->SetBranchAddress("fPulseLength50", pulse_length50);
@@ -318,32 +327,74 @@ int main(int argc, char* argv[])
 		// tree->SetBranchAddress("triggerpulseHeight",&triggerpulseHeight);
 		// tree->SetBranchAddress("triggerpulseWidth",&triggerpulseWidth);
 		// tree->SetBranchAddress("triggerpulsePeakTime",&triggerpulsePeakTime);
-		cout << " processing root file No. " << i << endl;
-
+		// cout << " processing root file No. " << i << endl;
+		double numavp = 0;
 		int nument = tree->GetEntries();
 		for (int j = 0; j < nument; j++)
 		{
 			tree->GetEntry(j);
 			// loop throught pulses
+			fillt = true;
+			if (j % 100 == 0)
+			{
+				cout << " This is sweep : " << j << endl;
+			}
 			if (stored_livetime)
 				event_rate = (double)npulses / livetime;
-			event->Fill();
+
+			for (int sam = 0; sam < number_of_samples; sam++)
+			{
+				h_sum->Fill(sam, waveforms[sam]);
+				// waveforms[sam] = raw_waveform[sam] - thisbase;
+			}
+			int passedpulses = 0;
 			for (int k = 0; k < npulses; k++)
 			{
-				int initialsam = (use_trigger ? (pl[k] + fTriggerStartSam) : pl[k]);
-				int finalsam = (use_trigger ? (pr[k] + fTriggerStartSam) : pr[k]);
-				if (initialsam > 1200 && initialsam < 1180)
-					continue;
-				for (int ns = fmax(initialsam - 10, 0); ns < fmin(finalsam + 11, nSamples); ns++)
+				int initialsam = (use_trigger ? (pl[k] + triggerStartSam) : pl[k]);
+				int finalsam = (use_trigger ? (pr[k] + triggerStartSam) : pr[k]);
+				if (initialsam < 1000)
 				{
-					h_avgphd->Fill(ns, waveforms[ns] * 8192);
+					fillt = false;
+					break;
 				}
+				if (initialsam > 1220 && initialsam < 1180)
+					continue;
+				for (int ns = fmax(initialsam - 10, 0); ns < fmin(finalsam + 11, number_of_samples); ns++)
+				{
+					h_avgphd->Fill(ns - fmax(initialsam - 10, 0), waveforms[ns]);
+				}
+				if (k > passedpulses)
+				{
+					amplitude[passedpulses] = amplitude[k];
+					charge_v[passedpulses] = charge_v[k];
+					amplitude_position[passedpulses] = amplitude_position[k];
+					pl[passedpulses] = pl[k];
+					pr[passedpulses] = pr[k];
+					biggeststep[passedpulses] = biggeststep[k];
+					// reconstruction params
+					pulse_length99[passedpulses] = pulse_length99[k];
+					pulse_length95[passedpulses] = pulse_length95[k];
+					pulse_length90[passedpulses] = pulse_length90[k];
+					// pulse_length80[passedpulses] = pulse_length80[k];
+					pulse_length75[passedpulses] = pulse_length75[k];
+					pulse_length50[passedpulses] = pulse_length50[k];
+					pulse_length25[passedpulses] = pulse_length25[k];
+					pulse_length5[passedpulses] = pulse_length5[k];
+					pulse_length1[passedpulses] = pulse_length1[k];
+					pulse_length05[passedpulses] = pulse_length05[k];
+					CalibratedTime[passedpulses] = CalibratedTime[k];
+				}
+				numavp++;
+				passedpulses++;
 			}
+			if (fillt)
+				npulses = passedpulses;
+			event->Fill();
 		}
 		// fin->Close();
 		//} // main for loop
 		fout->cd();
-
+		h_avgphd->Scale(1.0 / numavp);
 		h_avgphd->Write();
 		event->Write();
 	}
