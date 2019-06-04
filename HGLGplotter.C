@@ -94,7 +94,7 @@ int HGLGplotter(TString fi1, TString fi2)
 	int npulses1 = 0;
 	bool fillt1 = true;
 
-	TChain* event1 = new TChain("Event");
+	TChain* event1 = new TChain("Events");
 	int checkker = event1->Add(f1);
 	if (checkker <= 0)
 	{

@@ -209,7 +209,7 @@ int main(int argc, char* argv[])
 	int npulses = 0;
 	bool fillt = true;
 
-	TTree* event = new TTree("Event", "Event");
+	TTree* event = new TTree("Events", "Events");
 	std::cout << "\nCreating output file" << std::endl;
 	event->Branch("nSamples", &number_of_samples, "number_of_samples/I");
 	if (stored_livetime)
@@ -357,8 +357,10 @@ int main(int argc, char* argv[])
 					fillt = false;
 					break;
 				}
+/*
 				if (initialsam > 1220 && initialsam < 1180)
 					continue;
+*/
 				for (int ns = fmax(initialsam - 10, 0); ns < fmin(finalsam + 11, number_of_samples); ns++)
 				{
 					h_avgphd->Fill(ns - fmax(initialsam - 10, 0), waveforms[ns]);
