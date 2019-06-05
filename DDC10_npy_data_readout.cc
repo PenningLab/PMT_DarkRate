@@ -770,7 +770,7 @@ int main(int argc, char* argv[])
 		  cout << "Read in " << readin << " events so far" << endl;
 		}
 		*/
-		if (sweep % 100 == 0)
+		if (sweep % 1000 == 0)
 		{
 			cout << " This is sweep : " << sweep << endl;
 			cout << " Trigger time: " << trigger_t << endl;

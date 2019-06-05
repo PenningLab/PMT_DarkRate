@@ -37,7 +37,7 @@
 #include "RooDecay.h"
 #include "RooGaussModel.h"
 #include "RooGamma.h"
-void Fit_SPE_LG_doubleGamma(TString infile){
+void Fit_SPE_HG_doubleGamma(TString infile){
     // Input file
      TFile* fin = new TFile(infile,"READ");
 
@@ -55,7 +55,7 @@ void Fit_SPE_LG_doubleGamma(TString infile){
     tree->SetBranchAddress("bIsGood", &fillt1);
 	tree->SetBranchAddress("fPulseRightEdge", pr);
 		tree->SetBranchAddress("fPulseLeftEdge", pl);
-    TH1D* hspe = new TH1D("hspe","hspe",200,0.0,20);
+    TH1D* hspe = new TH1D("hspe","hspe",2000,0.0,200);
 	hspe->Sumw2();
     // pC/V = 5
     for(int i=0; i<tree->GetEntries(); i++){
@@ -70,24 +70,24 @@ void Fit_SPE_LG_doubleGamma(TString infile){
     }
 
 	double qmin = 0;
-	double qmax = 30;
+	double qmax = 200;
 
     //setup fitting function
     RooRealVar q("q", "q", qmin, qmax);
-	RooRealVar p0("p0", "p0", 0.4, 0.1, 0.9);
-	RooRealVar k0("k0", "k0",18.0, 0.8, 25.0);
-	RooRealVar q0("q0", "q0", 0.3, 0.01, 1.5);
-	RooRealVar p1("p1", "p1", 0.4, 0.1, 0.9);
-	RooRealVar k1("k1", "k1", 2.0, 1.0, 300.0);
-	RooRealVar q1("q1", "q1", 1.0, 0.6, 3);
-	RooRealVar mu("mu", "mu", 0.0, -3.0, 3.0);
+	RooRealVar p0("p0", "p0", 0.4, 0, 1);
+	RooRealVar k0("k0", "k0",1.0, 0, 5);
+	RooRealVar q0("q0", "q0", 28, 10, 35);
+	RooRealVar p1("p1", "p1", 0.4, 0.1, 1);
+	RooRealVar k1("k1", "k1", 12, 1.0, 30);
+	RooRealVar q1("q1", "q1", 9, 0.6, 10);
+	RooRealVar mu("mu", "mu", 0.0, -100, 100);
 	mu.setConstant(true);
 	RooGamma g0("g0", "g0", q, k0, q0, mu);
 	RooGamma g1("g1", "g1", q, k1, q1, mu);
-	RooRealVar ped_tau("ped_tau","ped_tau",0.1,0,2.2);
-	RooRealVar prompt_mean("prompt_mean","prompt_mean",1.1, 0.1,1.6);
-    RooRealVar prompt_sigma("prompt_sigma","prompt_sigma",0.1,0.0,0.6);
-	RooRealVar prompt_frac("prompt_frac","prompt_frac",0.1,0.01,0.4);
+	RooRealVar ped_tau("ped_tau","ped_tau",0.1,0,3);
+	RooRealVar prompt_mean("prompt_mean","prompt_mean",1.2, 0.4,3);
+    RooRealVar prompt_sigma("prompt_sigma","prompt_sigma",0.1,0.0,1.0);
+	RooRealVar prompt_frac("prompt_frac","prompt_frac",0.1,0.01,0.9);
 	RooGaussModel gaussm("gaussm","gaussm",q,prompt_mean,prompt_sigma);
 	RooDecay ped("ped","ped",q,ped_tau,gaussm,RooDecay::SingleSided);
 	RooAddPdf* pdf = new  RooAddPdf("charge_pdf", "charge_pdf",
@@ -101,7 +101,7 @@ void Fit_SPE_LG_doubleGamma(TString infile){
 
     TCanvas* c1 = new TCanvas("c1","c1");
     RooPlot* frame = q.frame();
-    frame->SetTitle("LG");
+    frame->SetTitle("HG");
     data->plotOn(frame);
     pdf->plotOn(frame,RooFit::LineColor(kBlue));
     pdf->plotOn(frame,RooFit::Components("ped"),RooFit::LineStyle(kDashed),RooFit::LineColor(kRed));
@@ -109,6 +109,7 @@ void Fit_SPE_LG_doubleGamma(TString infile){
 	pdf->plotOn(frame,RooFit::Components("g1"),RooFit::LineStyle(kDashed),RooFit::LineColor(kOrange));
 
     frame->Draw();
-
 	std::cout<<"mu = "<<mu.getValV()<<std::endl;
+
+
 }
