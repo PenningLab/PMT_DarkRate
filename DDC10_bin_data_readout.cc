@@ -1,7 +1,6 @@
 /////////////////////////////////////////////////////////////////////////////////////////
-// To compile : g++ -I${ROOTSYS}/include/ `root-config --cflags --libs` -o
-// DDC10_bin_data_readout DDC10_bin_data_readout.cc To execute (help infomation
-// gives detail utility) : ./DDC10_data_readout -h
+// To compile : g++ -o DDC10_bin_data_readout DDC10_bin_data_readout.cc -I${ROOTSYS}/include/ `root-config --cflags --libs`
+// To execute (help infomation gives detail utility) : ./DDC10_data_readout -h
 /* Revision log :
  *
         4/25/2018 RW : Code for reading scope's text file and do the pulse
@@ -16,7 +15,6 @@
 #include <cstdlib>
 #include <dirent.h>
 #include <fstream> // std::ifstream
-#include <iostream>
 #include <iostream> // std::cout
 #include <map>
 #include <numeric>
@@ -64,8 +62,10 @@ bool triangle = false;
 bool boxsmoothing = false;
 bool use_basefile = false;
 
+bool isgood = true;
+
 // define pulse finding parameters
-double pulseThresh = 8.0;
+double pulseThresh = 5.0;
 double trigPulseThresh = 8.0;
 double windowSize = 3.0;
 double edgeThresh = 3.0;
@@ -327,6 +327,8 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 
 			startv.push_back(temp_startv);
 			endv.push_back(temp_endv);
+			pulse_left_edge.push_back(left);
+			pulse_right_edge.push_back(right);
 			if (signal_start)
 			{
 				npulses++;
@@ -349,7 +351,8 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 				pulse_length90[npulses - 1] = tempq90;
 				pulse_length95[npulses - 1] = tempq95;
 				pulse_length99[npulses - 1] = tempq99;
-
+				if (left < baseline_samples_set)
+					isgood = false;
 				temp_charge += charge_v[npulses - 1];
 				if (i < promptwindow)
 					temp_ten_charge += charge_v[npulses - 1];
@@ -359,10 +362,8 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 				triggerHeight = max;
 				triggerPosition = temp_peak;
 				triggerWidth = right - left;
+				break;
 			}
-
-			pulse_left_edge.push_back(left);
-			pulse_right_edge.push_back(right);
 
 		} // if statement
 	}
@@ -464,7 +465,7 @@ int calcnumchannels(int mask)
 bool readlivetime(char datafilename[])
 {
 	char linea[250];
-
+	cout << "Attempting to read log file" << endl;
 	TString filenameform = datafilename;
 	filenameform.ReplaceAll(".bin", ".log");
 	ifstream loginfile;
@@ -486,17 +487,30 @@ bool readlivetime(char datafilename[])
 	while (loginfile.getline(linea, 250) && evtcounter < Nevts)
 	{
 		evtcounter++;
-		std::istringstream blank(linea);
+		std::stringstream blank(linea);
 		int iev = -1, dum1 = -1;
 		long int liveentry = -1;
-		char c;
-		if (!(blank >> iev >> c >> dum1 >> c >> liveentry) && !(c == ','))
+		char c = ',';
+		// bool isfail = false;
+		// cout << linea << endl;
+		std::string item;
+		if (std::getline(blank, item, c))
+			iev = std::atoi(item.data());
+		if (std::getline(blank, item, c))
+			dum1 = std::atoi(item.data());
+		if (std::getline(blank, item, c))
+			liveentry = std::stol(item.data());
+
+		vlivetime[Nevts - evtcounter] = (double)liveentry / 6e8;
+		// cout << iev << ", live entry is: " << liveentry << ", livetime is: " << vlivetime[Nevts - evtcounter] << endl;
+		if (liveentry == -1 || dum1 == -1 || iev == -1)
 		{
 			std::cout << "Reading logfile failed skipping" << std::endl;
 			vlivetime.clear();
 			return false;
 		}
-		vlivetime[Nevts - evtcounter] = (double)liveentry / 6.0e8;
+		// vlivetime[Nevts - evtcounter] = (double)liveentry / 6e8;
+		// cout << iev << ", live entry is: " << liveentry << ", livetime is: " << vlivetime[Nevts - evtcounter] << endl;
 	}
 	loginfile.close();
 	return true;
@@ -737,7 +751,7 @@ int main(int argc, char* argv[])
 	event->Branch("fCharge_pC", &event_charge, "event_charge/F");
 	event->Branch("fChargePrompt_pC", &event_charge_ten, "event_charge_ten/F");
 	event->Branch("fBaseline_V", &event_baseline, "event_baseline/F");
-
+	event->Branch("bIsGood", &isgood, "isgood/O");
 	event->Branch("nPulses", &npulses, "npulses/I");
 	event->Branch("fPulseHeight_V", amplitude, "amplitude[npulses]/F");
 	event->Branch("fPulseRightEdge", pr, "pr[npulses]/F");
@@ -786,11 +800,7 @@ int main(int argc, char* argv[])
 
 			cout << "Read in " << readin << " events so far" << endl;
 		}
-		if (sweep % 1000 == 0)
-		{
-			cout << " This is sweep : " << sweep << endl;
-			cout << "Trigger time: " << trigger_t << endl;
-		}
+
 		current_sweep = sweep;
 
 		if (use_trigger)
@@ -799,6 +809,12 @@ int main(int argc, char* argv[])
 			getwaveform(trigwaveform, trig_channel, lastadd, (trigger_inversion ? -1.0 : 1.0), true);
 			trigger_t = Trigger_info(trigwaveform);
 			trigwaveform.clear();
+		}
+
+		if (sweep % 1000 == 0)
+		{
+			cout << " This is sweep : " << sweep << endl;
+			cout << "Trigger time: " << trigger_t << endl;
 		}
 
 		signal_start = true;
@@ -829,10 +845,7 @@ int main(int argc, char* argv[])
 		// event_time.push_back(number_of_samples);
 		baseline_sweep.push_back(thisbase); // save baseline for checking baseline shifting
 		double drate = npulses;
-		if (readlogs)
-			drate *= 1.0 / livetime;
-		else
-			drate *= 1.0 / (double)(1e-8 * number_of_samples);
+
 		dark_hits->Fill(drate);
 		// npeaks.push_back(npulses);
 		baselinev.clear();
@@ -891,7 +904,7 @@ int main(int argc, char* argv[])
 			line3->Draw("");
 			if (use_trigger)
 			{
-				TLine* line4 = new TLine(triggerStartSam * timescale, rmax, triggerStartSam * timescale, rmin * 1.1);
+				TLine* line4 = new TLine(trigger_t, rmax, trigger_t, rmin * 1.1);
 				line4->SetLineColor(46);
 				line4->SetLineStyle(3);
 				line4->SetLineWidth(3);

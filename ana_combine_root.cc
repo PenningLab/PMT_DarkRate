@@ -1,7 +1,6 @@
 /////////////////////////////////////////////////////////////////////////////////////////
-// To compile : g++ ana_combine_root.cc -o ana_combine_root -I${ROOTSYS}/include/ `root-config --cflags --libs` `python3.6m-config --cflags --ldflags`
-// `python3.6m-config --cflags --ldflags` Requires an install of python 3.6, point to your location for
-// python3.6m-config To execute (help infomation gives detail utility) : ./DDC10_data_readout -h
+// To compile : g++ ana_combine_root.cc -o ana_combine_root -I${ROOTSYS}/include/ `root-config --cflags --libs`
+// To execute (help infomation gives detail utility) : ./DDC10_data_readout -h
 /* Revision log :
  *
     4/25/2018 RW : Code for reading scope's text file and do the pulse finding.
@@ -25,8 +24,6 @@
 #include <sys/types.h>
 #include <time.h>
 #include <vector>
-
-#include <Python.h>
 
 #include <TMatrixDSymEigen.h>
 //#include <libRATEvent.so>
@@ -52,6 +49,8 @@
 #include <TTree.h>
 #include <TVector3.h>
 #include <TVectorD.h>
+
+float shift = 0;
 
 //#include <boost/date_time.hpp>
 using namespace std;
@@ -80,7 +79,10 @@ int main(int argc, char* argv[])
 	bool use_temp = false;
 	bool trig_pmt = false;
 	bool use_frac = false;
+	bool use_trigger = false;
 	bool calcrate = false;
+	bool stored_livetime = false;
+	double sample_time = 10e-9;
 	int frac_time = 0;
 	int frac_start = 0;
 	float charge_threshold = -1;
@@ -121,14 +123,6 @@ int main(int argc, char* argv[])
 		{
 			outfilename = argv[i + 1];
 		}
-		else if (arg == "-s")
-		{
-			num_sweeps = atof(argv[i + 1]);
-		}
-		else if (arg == "-t")
-		{
-			use_temp = true;
-		}
 		else if (arg == "-init")
 		{
 			initial_run = atoi(argv[i + 1]);
@@ -141,17 +135,15 @@ int main(int argc, char* argv[])
 		{
 			trig_pmt = true;
 		}
+		else if (arg == "-ltime")
+		{
+			stored_livetime = true;
+		}
 		else if (arg == "-frac")
 		{
 			use_frac = true;
 			frac_time = atof(argv[i + 1]);
 			frac_start = atof(argv[i + 2]);
-		}
-		else if (arg == "-rate")
-		{
-			calcrate = true;
-			pydir = argv[i + 1];
-			// pydir.append("/readlogs.py");
 		}
 	}
 	if (out_dir == "")
@@ -164,105 +156,105 @@ int main(int argc, char* argv[])
 		temp_file.open(in_temp, std::ifstream::in);
 	}
 
-	double myrate = 0;
-	if (calcrate)
-	{
-		std::cout << "Initializing python" << std::endl;
-		Py_Initialize();
-		std::cout << "Updating syspath with pydir: " << pydir << std::endl;
-		PyObject* sysPath = PySys_GetObject("path");
-		PyList_Append(sysPath, PyUnicode_FromFormat("%s", pydir.c_str()));
-
-		std::cout << "Loading module" << std::endl;
-
-		// Load module
-		PyObject* pName = PyUnicode_FromString("readlogs");
-		PyObject* pModule = PyImport_Import(pName);
-		Py_DECREF(pName);
-		if (pModule != NULL)
-		{
-			std::cout << "Py Module Found" << std::endl;
-
-			// Get function from module
-			PyObject* pFunc = PyObject_GetAttrString(pModule, "calcrates");
-			if (pFunc && PyCallable_Check(pFunc))
-			{
-				PyObject* pargs = PyTuple_New(2);
-				PyObject* pval = NULL;
-				pval = PyUnicode_FromFormat("%s", working_dir.c_str());
-				PyTuple_SetItem(pargs, 0, pval);
-				pval = PyLong_FromLong(number_of_files);
-				PyTuple_SetItem(pargs, 1, pval);
-
-				pval = PyObject_CallObject(pFunc, pargs);
-				if (pval != NULL)
-				{
-					myrate = PyFloat_AsDouble(pval);
-					std::cout << "Rate as read by C++ is " << myrate << std::endl;
-				}
-				else
-				{
-					PyErr_Print();
-					std::cout << "Failed to get result" << std::endl;
-				}
-				Py_XDECREF(pval);
-				Py_DECREF(pargs);
-			}
-			else
-			{
-				if (PyErr_Occurred())
-					PyErr_Print();
-				std::cout << "Couldn't find calcrates" << std::endl;
-			}
-			Py_XDECREF(pFunc);
-			Py_XDECREF(pModule);
-		}
-		else
-		{
-			PyErr_Print();
-			std::cout << "Failed to load module" << std::endl;
-		}
-		// std::cout<<"Pre close check"<<std::endl;
-		int pyoutcheck = Py_FinalizeEx();
-		std::cout << "closing out python " << pyoutcheck << std::endl;
-	}
-
 	std::cout << "\nCreating output file" << std::endl;
 	char out_path[320];
 	sprintf(out_path, "%s/%s", out_dir.c_str(), outfilename.c_str());
 
 	TFile* fout = new TFile(out_path, "RECREATE");
-	TNtuple* pulse = new TNtuple("pulse", "pulse",
-	    "pulseHeight:pulseRightEdge:pulseLeftEdge:pulseCharge:pulsePeakTime:CalibratedTime:baselinerms:windowratio:Run:"
-	    "sweep:bigstep:pulseLength5:pulseLength25:pulseLength50:pulseLength75:pulseLength80:pulseLength90:"
-	    "pulseLength95:pulseLength99:triggerpulseHeight:triggerpulseWidth:triggerpulsePeakTime");
-	// TNtuple *event = new TNtuple("event","event","charge:charge_frac:baseline:rms:npulses");
 
 	//}
 	std::cout << "creating output ntuple" << std::endl;
 	// variables
-	float pulseHeight = 0, pulseRightEdge = 0, pulseLeftEdge = 0, pulseCharge = 0, pulsePeakTime = 0, CalibratedTime = 0, windowRatio = 0,
-	      baselinerms = 0, sweep = 0, bigstep = 0, plen5 = 0, plen25 = 0, plen50 = 0, plen75 = 0, plen80 = 0, plen90 = 0, plen95 = 0, plen99 = 0;
-	float charge = 0, charge_frac = 0, baseline = 0, rms = 0, npeaks = 0, firstTime = 0, triggerpulseHeight = 0, triggerpulseWidth = 0,
-	      triggerpulsePeakTime = 0, mycharge_fracj = 0;
+	const int kMaxPulses = 1000;
+	int number_of_samples;
+	float amplitude[kMaxPulses];
+	float charge_v[kMaxPulses];
+	float amplitude_position[kMaxPulses];
+	float pl[kMaxPulses];
+	float pr[kMaxPulses];
+	float biggeststep[kMaxPulses];
+	// reconstruction params
+	float pulse_length99[kMaxPulses];
+	float pulse_length95[kMaxPulses];
+	float pulse_length90[kMaxPulses];
+	float pulse_length80[kMaxPulses];
+	float pulse_length75[kMaxPulses];
+	float pulse_length50[kMaxPulses];
+	float pulse_length25[kMaxPulses];
+	float pulse_length5[kMaxPulses];
+	float pulse_length1[kMaxPulses];
+	float pulse_length05[kMaxPulses];
+	float CalibratedTime[kMaxPulses];
+	// float found_pulses[kMaxPulses][kMaxPulseSamples];
+	// int found_pulses_nsamples[kMaxPulses];
+	// float windowratio;
+	// float pulsebaseline_rms;
+
+	float triggerHeight;
+	float triggerStart;
+	float triggerStartSam;
+	float triggerRising1;
+	float triggerRising5;
+	float triggerPosition;
+	float triggerWidth;
+
+	float event_charge;
+	float event_charge_ten;
+	float event_baseline;
+	float event_rms;
+	double livetime;
+	float event_rate;
+	int npulses = 0;
+	bool isgood;
+
 	TTree* event = new TTree("event", "event");
 	std::cout << "\nCreating output file" << std::endl;
-	event->Branch("charge", &charge, "charge/F");
-	event->Branch("charge_frac", &charge_frac, "charge_frac/F");
-	event->Branch("baseline", &baseline, "baseline/F");
-	event->Branch("rms", &rms, "rms/F");
-	event->Branch("npulses", &npeaks, "npulse/F");
-	if (use_frac)
-		event->Branch("mycharge_frac", &mycharge_fracj, "mycharge_fracj/F");
+	event->Branch("nSamples", &number_of_samples, "number_of_samples/I");
+	if (stored_livetime)
+	{
+		event->Branch("dLiveTime_s", &livetime, "livetime/D");
+		event->Branch("dEventRate_Hz", &event_rate, "event_rate/D");
+	}
+	event->Branch("fCharge_pC", &event_charge, "event_charge/F");
+	event->Branch("fChargePrompt_pC", &event_charge_ten, "event_charge_ten/F");
+	event->Branch("fBaseline_V", &event_baseline, "event_baseline/F");
+	event->Branch("bIsGood", &isgood, "isgood/O");
+	event->Branch("nPulses", &npulses, "npulses/I");
+	event->Branch("fPulseHeight_V", amplitude, "amplitude[npulses]/F");
+	event->Branch("fPulseRightEdge", pr, "pr[npulses]/F");
+	event->Branch("fPulseLeftEdge", pl, "pl[npulses]/F");
+	event->Branch("fPulseCharge_pC", charge_v, "charge_v[npulses]/F");
+	event->Branch("fPulsePeakTime", amplitude_position, "amplitude_position[npulses]/F");
+	event->Branch("fCalibratedTime", CalibratedTime, "CalibratedTime[npulses]/F");
+	event->Branch("fBigStep", biggeststep, "biggeststep[npulses]/F");
+	event->Branch("fPulseLength05", pulse_length05, "pulse_length05[npulses]/F");
+	event->Branch("fPulseLength1", pulse_length1, "pulse_length1[npulses]/F");
+	event->Branch("fPulseLength5", pulse_length5, "pulse_length5[npulses]/F");
+	event->Branch("fPulseLength25", pulse_length25, "pulse_length25[npulses]/F");
+	event->Branch("fPulseLength50", pulse_length50, "pulse_length50[npulses]/F");
+	event->Branch("fPulseLength75", pulse_length75, "pulse_length75[npulses]/F");
+	event->Branch("fPulseLength90", pulse_length90, "pulse_length90[npulses]/F");
+	event->Branch("fPulseLength95", pulse_length95, "pulse_length95[npulses]/F");
+	event->Branch("fPulseLength99", pulse_length99, "pulse_length99[npulses]/F");
+
+	if (use_trigger)
+	{
+		event->Branch("fTriggerTime", &triggerPosition, "triggerPosition/F");
+		event->Branch("fTriggerHeight_V", &triggerHeight, "triggerHeight/F");
+		event->Branch("fTriggerWidth", &triggerWidth, "triggerWidth/F");
+	}
+
 	//    short int sweep=0;
 	// int run=0;
 	vector<double> dark_count;
 	vector<double> dark_count_error;
+	TH1F* h_avgphd = new TH1F("h_avgphd", "Average Pulse;Sample (10ns);ADC counts", 8192, 0, 8192);
+	h_avgphd->Sumw2();
 
-	vector<double> rtd1;
-	vector<double> rtd2;
-	vector<double> rtd3;
-	vector<double> rtd4;
+	TH1D* h_sum = new TH1D("ADC_sum_waveform", ("#font[132]{WFD SumWaveForm}"), 10000, 0, 10000);
+	h_sum->SetXTitle("#font[132]{Sample (10ns)}");
+	h_sum->GetXaxis()->SetLabelFont(132);
+	h_sum->GetYaxis()->SetLabelFont(132);
 
 	cout << "start looping" << endl;
 	for (int i = initial_run; i < number_of_files; i++)
@@ -271,7 +263,6 @@ int main(int argc, char* argv[])
 		sprintf(root_file_name, "%s/%u_%s", working_dir.c_str(), i, filename.c_str());
 		cout << "Reading in file " << i << endl;
 		TTree* tree;
-		TTree* event_tree;
 		TFile* fin = new TFile(root_file_name, "READ");
 		if (fin == NULL || fin->IsZombie())
 		{
@@ -282,87 +273,76 @@ int main(int argc, char* argv[])
 		}
 		else
 		{
-			tree = (TTree*)fin->Get("pulse");
-			if (event_tree_enable)
-			{
-				event_tree = (TTree*)fin->Get("event");
-				cout << " event tree enabled " << endl;
-			}
+			tree = (TTree*)fin->Get("event");
 		}
-		double nos = fin->Get("Nsamples")->GetUniqueID();
-		TH1F* dark_hit = (TH1F*)fin->Get("dark_hits");
-		dark_count.push_back(dark_hit->GetMean() / nos);
-		dark_count_error.push_back(dark_hit->GetMeanError() / nos);
 
-		if (use_temp)
-		{
-			double n, irtd1, irtd2, irtd3, irtd4;
-			temp_file >> n >> irtd1 >> irtd2 >> irtd3 >> irtd4;
-			rtd1.push_back(irtd1);
-			rtd2.push_back(irtd2);
-			rtd3.push_back(irtd3);
-			rtd4.push_back(irtd4);
-		}
+		// double nos = fin->Get("Nsamples")->GetUniqueID();
+		TH1F* dark_hit = (TH1F*)fin->Get("dark_rate");
+		dark_count.push_back(dark_hit->GetMean());
+		dark_count_error.push_back(dark_hit->GetMeanError());
+		float waveforms[8192];
 		cout << " Loading tree branches" << endl;
-		tree->SetBranchAddress("pulseHeight", &pulseHeight);
-		tree->SetBranchAddress("pulseRightEdge", &pulseRightEdge);
-		tree->SetBranchAddress("pulseLeftEdge", &pulseLeftEdge);
-		tree->SetBranchAddress("pulseCharge", &pulseCharge);
-		tree->SetBranchAddress("pulsePeakTime", &pulsePeakTime);
-		tree->SetBranchAddress("CalibratedTime", &CalibratedTime);
-		tree->SetBranchAddress("windowratio", &windowRatio);
-		tree->SetBranchAddress("baselinerms", &baselinerms);
-		tree->SetBranchAddress("sweep", &sweep);
-		tree->SetBranchAddress("bigstep", &bigstep);
-		tree->SetBranchAddress("pulseLength5", &plen5);
-		tree->SetBranchAddress("pulseLength25", &plen25);
-		tree->SetBranchAddress("pulseLength50", &plen50);
-		tree->SetBranchAddress("pulseLength75", &plen75);
-		tree->SetBranchAddress("pulseLength80", &plen80);
-		tree->SetBranchAddress("pulseLength90", &plen90);
-		tree->SetBranchAddress("pulseLength95", &plen95);
-		tree->SetBranchAddress("pulseLength99", &plen99);
+		tree->SetBranchAddress("nSamples", &number_of_samples);
+		tree->SetBranchAddress("raw_waveforms", waveforms);
+		if (stored_livetime)
+			tree->SetBranchAddress("dLiveTime_s", &livetime);
+		tree->SetBranchAddress("fCharge_pC", &event_charge);
+		tree->SetBranchAddress("fChargePrompt_pC", &event_charge_ten);
+		tree->SetBranchAddress("fBaseline_V", &event_baseline);
+		tree->SetBranchAddress("bIsGood", &isgood);
+		tree->SetBranchAddress("nPulses", &npulses);
+		tree->SetBranchAddress("fPulseHeight_V", amplitude);
+		tree->SetBranchAddress("fPulseRightEdge", pr);
+		tree->SetBranchAddress("fPulseLeftEdge", pl);
+		tree->SetBranchAddress("fPulseCharge_pC", charge_v);
+		tree->SetBranchAddress("fPulsePeakTime", amplitude_position);
+		tree->SetBranchAddress("fCalibratedTime", CalibratedTime);
+		tree->SetBranchAddress("fBigStep", biggeststep);
+		tree->SetBranchAddress("fPulseLength5", pulse_length5);
+		tree->SetBranchAddress("fPulseLength25", pulse_length25);
+		tree->SetBranchAddress("fPulseLength50", pulse_length50);
+		tree->SetBranchAddress("fPulseLength75", pulse_length75);
+		tree->SetBranchAddress("fPulseLength90", pulse_length90);
+		tree->SetBranchAddress("fPulseLength95", pulse_length95);
+		tree->SetBranchAddress("fPulseLength99", pulse_length99);
+
+		if (use_trigger)
+		{
+			tree->SetBranchAddress("fTriggerTime", &triggerPosition);
+			tree->SetBranchAddress("fTriggerHeight_V", &triggerHeight);
+			tree->SetBranchAddress("fTriggerWidth", &triggerWidth);
+		}
+		// if livetime recorded and internal trigger get rate using that
+		// if external trigger and external trigger time provided use nsamples to calculate rate
 		// tree->SetBranchAddress("triggerpulseHeight",&triggerpulseHeight);
 		// tree->SetBranchAddress("triggerpulseWidth",&triggerpulseWidth);
 		// tree->SetBranchAddress("triggerpulsePeakTime",&triggerpulsePeakTime);
 		cout << " processing root file No. " << i << endl;
 
 		int nument = tree->GetEntries();
-		std::vector<double> mycharge_frac(1, 0);
-		if (event_tree_enable)
-		{
-			int numevts = event_tree->GetEntries();
-			if (use_frac)
-				mycharge_frac.resize(numevts, 0);
-		}
 		for (int j = 0; j < nument; j++)
 		{
 			tree->GetEntry(j);
-			float inmount[] = { pulseHeight, pulseRightEdge, pulseLeftEdge, pulseCharge, pulsePeakTime, CalibratedTime, baselinerms, windowRatio, i,
-				sweep, bigstep, plen5, plen25, plen50, plen75, plen80, plen90, plen95 };
-			float* inmountpoint = &inmount[0];
-			pulse->Fill(inmountpoint);
-			if (use_frac && pulsePeakTime > frac_start && pulsePeakTime < (frac_start + frac_time))
-				mycharge_frac[sweep] += pulseCharge;
-			// delete inmountpoint;
-			// cout<<" This is root file : "<<i<<" we are reading entry : "<<j<<" with pulseHeight :
-			// "<<pulseHeight<<endl;
-		}
-		if (event_tree_enable)
-		{
-			event_tree->SetBranchAddress("charge", &charge);
-			event_tree->SetBranchAddress("charge_frac", &charge_frac);
-			event_tree->SetBranchAddress("baseline", &baseline);
-			event_tree->SetBranchAddress("rms", &rms);
-			event_tree->SetBranchAddress("npulses", &npeaks);
+			// loop throught pulses
+			if (stored_livetime)
+				event_rate = (double)npulses / livetime;
+			event->Fill();
+			if (!isgood)
+				continue;
 
-			int numevts = event_tree->GetEntries();
-			for (int j = 0; j < event_tree->GetEntries(); j++)
+			for (int sam = 0; sam < number_of_samples; sam++)
 			{
-				event_tree->GetEntry(j);
-				if (use_frac)
-					mycharge_fracj = mycharge_frac[j];
-				event->Fill();
+				h_sum->Fill(sam, waveforms[sam]);
+				// waveforms[sam] = raw_waveform[sam] - thisbase;
+			}
+			for (int k = 0; k < npulses; k++)
+			{
+				int initialsam = pl[k];
+				int finalsam = pr[k];
+				for (int ns = fmax(initialsam - 3, 0); ns < fmin(finalsam + 3, number_of_samples); ns++)
+				{
+					h_avgphd->Fill(ns, waveforms[ns]);
+				}
 			}
 		}
 		std::cout << " Finished processing file No. " << i << std::endl;
@@ -374,8 +354,8 @@ int main(int argc, char* argv[])
 	int backcount = 0;
 	for (int h = 0; h < dark_count.size(); h++)
 	{
-		double temp_dark_rate = dark_count[h] * 1E8;
-		double temp_dark_rate_error = dark_count_error[h] * 1E8;
+		double temp_dark_rate = dark_count[h] * 1e8;
+		double temp_dark_rate_error = dark_count_error[h] * 1e8;
 		if (temp_dark_rate < 0)
 		{
 			backcount++;
@@ -385,62 +365,17 @@ int main(int argc, char* argv[])
 		dark_plot->SetPointError(h - backcount, 0, temp_dark_rate_error);
 	}
 
-	if (use_temp)
-	{
-		TGraphErrors* prtd1 = new TGraphErrors();
-		TGraphErrors* prtd2 = new TGraphErrors();
-		TGraphErrors* prtd3 = new TGraphErrors();
-		TGraphErrors* prtd4 = new TGraphErrors();
-		for (int h = 0; h < dark_count.size(); h++)
-		{
-			double temp_dark_rate = dark_count[h] * 1E8;
-			double temp_dark_rate_error = dark_count_error[h] * 1E8;
-			prtd1->SetPoint(h, rtd1[h], temp_dark_rate);
-			prtd2->SetPoint(h, rtd2[h], temp_dark_rate);
-			prtd3->SetPoint(h, rtd3[h], temp_dark_rate);
-			prtd4->SetPoint(h, rtd4[h], temp_dark_rate);
-
-			prtd1->SetPointError(h, 0, temp_dark_rate_error);
-			prtd2->SetPointError(h, 0, temp_dark_rate_error);
-			prtd3->SetPointError(h, 0, temp_dark_rate_error);
-			prtd4->SetPointError(h, 0, temp_dark_rate_error);
-		}
-
-		prtd1->Sort();
-		prtd2->Sort();
-		prtd3->Sort();
-		prtd4->Sort();
-
-		prtd1->SetName("RTD1");
-		prtd2->SetName("RTD2");
-		prtd3->SetName("RTD3");
-		prtd4->SetName("RTD4");
-
-		prtd1->SetTitle("RTD1;Temp [C];DarkRate (Hz)");
-		prtd2->SetTitle("RTD2;Temp [C];DarkRate (Hz)");
-		prtd3->SetTitle("RTD3;Temp [C];DarkRate (Hz)");
-		prtd4->SetTitle("RTD4;Temp [C];DarkRate (Hz)");
-
-		prtd1->Write();
-		prtd2->Write();
-		prtd3->Write();
-		prtd4->Write();
-	}
-
-	dark_plot->SetName("dark_plotfromhist");
+	dark_plot->SetName("dark_plot");
 	dark_plot->SetTitle(";Run (100s);Dark Rate (Hz)");
 	TCanvas* cdark = new TCanvas("cdark", "cdark");
 	dark_plot->SetMarkerStyle(24);
 	dark_plot->SetMarkerColor(2);
 	dark_plot->Draw("AP");
 
-	TVectorD mrate(1);
-	mrate[0] = myrate;
-	mrate.Write("Rate");
-
+	h_avgphd->Write();
 	dark_plot->Write();
 	cdark->Write();
-	pulse->Write();
+	event->Write();
 	fout->Write();
 	fout->Close();
 	return 0;

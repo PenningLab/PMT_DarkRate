@@ -62,7 +62,7 @@ using namespace std;
 ifstream fin;
 bool signal_start = false;
 bool debug_mode = false;
-bool skipevent = false;
+bool goodevent = false;
 bool lim_sams = false;
 
 bool smoothing = false;
@@ -123,6 +123,7 @@ float pl[kMaxPulses];
 float pr[kMaxPulses];
 float biggeststep[kMaxPulses];
 // reconstruction params
+float pulse_peak20[kMaxPulses];
 float pulse_length99[kMaxPulses];
 float pulse_length95[kMaxPulses];
 float pulse_length90[kMaxPulses];
@@ -202,7 +203,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 	// getchar();
 	// Let's looking for the Pulses
 	npulses = 0;
-	skipevent = false;
+	goodevent = true;
 	for (int i = 0; i < v.size() - windowSize; i++)
 	{
 		// std::cout << "Sample " << i << std::endl;
@@ -215,7 +216,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 
 		double temp_bigstep = 0;
 
-		if (std::fabs(integral) > pThresh)
+		if ((integral) > pThresh)
 		{
 			if (debug_mode)
 			{
@@ -223,7 +224,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 			}
 			left = i;
 			integral = 1.0e9;
-			while (std::fabs(integral) > eThresh && left > windowSize)
+			while ((integral) > eThresh && left > windowSize)
 			{
 				left--;
 				integral = SimpsIntegral(v, b, left, left + windowSize);
@@ -244,7 +245,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 			bool end = false;
 			while (!end)
 			{
-				while (std::fabs(integral) > eThresh && right < nos - 1)
+				while ((integral) > eThresh && right < nos - 1)
 				{
 					right++;
 					integral = SimpsIntegral(v, b, right - windowSize, right);
@@ -263,7 +264,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 				{
 					r++;
 					integral = SimpsIntegral(v, b, r - windowSize, r);
-					if (std::fabs(integral) > pThresh)
+					if ((integral) > pThresh)
 					{
 						right = r;
 						end = false;
@@ -283,11 +284,11 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 			for (int j = left; j < right; j++)
 			{
 				double s = v[j] - b;
-				if (std::fabs(s) > max)
+				if (s > max)
 				{
 					max = s;
 					temp_peak = j;
-					if (j > 0 && std::fabs(v[j] - v[j - 1]) > temp_bigstep)
+					if (j > 0 && (v[j] - v[j - 1]) > temp_bigstep)
 						temp_bigstep = v[j] - v[j - 1];
 				}
 				// if((right-j)<(temp_peak-left))
@@ -314,14 +315,14 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 			if (right > nos)
 				continue;
 
-			if (std::fabs(SimpsIntegral(v, b, left, right)) <= eThresh)
+			if ((SimpsIntegral(v, b, left, right)) <= eThresh)
 			{
 				i = right - 1;
 				continue;
 			}
 			i = right;
 
-			if (std::fabs(max) < pulse_height_thresh)
+			if ((max) < pulse_height_thresh)
 				continue;
 
 			npulses++;
@@ -356,17 +357,39 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 				if (i - trigger < promptwindow)
 					temp_ten_charge += charge_v[npulses - 1];
 				if (left < baseline_samples_set)
-					skipevent = true;
+					goodevent = false;
+				double temp_20start = left, temp_20fin = right;
+				for (int j = temp_peak; j > left; j--)
+				{
+					double s = v[j] - b;
+					if (s >= 0.2 * max)
+					{
+						temp_20start = j;
+					}
+					else
+						break;
+				}
+				for (int j = temp_peak; j < right; j++)
+				{
+					double s = v[j] - b;
+					if (s >= 0.2 * max)
+					{
+						temp_20fin = j;
+					}
+					else
+						break;
+				}
+				pulse_peak20[npulses - 1] = (temp_20fin - temp_20start) * timescale;
 			}
 			else
 			{
 				triggerHeight = max;
-				triggerStart = left * timescale + start_time;
+				triggerStart = left * timescale;
 				triggerStartSam = left;
 				triggerRising05 = tempq05 * timescale;
 				triggerRising1 = tempq1 * timescale;
 				triggerRising5 = tempq5 * timescale;
-				triggerPosition = (temp_peak - left) * timescale + start_time;
+				triggerPosition = (temp_peak - left) * timescale;
 				triggerWidth = timescale * (right - left);
 			}
 			if (!signal_start && npulses > 1)
@@ -763,7 +786,7 @@ int main(int argc, char* argv[])
 	event->Branch("nSamples", &number_of_samples, "number_of_samples/I");
 	event->Branch("raw_waveforms", waveforms, "waveforms[number_of_samples]/F");
 
-	event->Branch("bIsGood", &skipevent, "skipevent/O");
+	event->Branch("bIsGood", &goodevent, "goodevent/O");
 	event->Branch("fCharge_pC", &event_charge, "event_charge/F");
 	event->Branch("fChargePrompt_pC", &event_charge_ten, "event_charge_ten/F");
 	event->Branch("fBaseline_V", &event_baseline, "event_baseline/F");
@@ -775,6 +798,7 @@ int main(int argc, char* argv[])
 	event->Branch("fPulseCharge_pC", charge_v, "charge_v[npulses]/F");
 	event->Branch("fPulsePeakTime", amplitude_position, "amplitude_position[npulses]/F");
 	event->Branch("fCalibratedTime", CalibratedTime, "CalibratedTime[npulses]/F");
+	event->Branch("fPulsePeak20", pulse_peak20, "pulse_peak20[npulses]/F");
 	// event->Branch("windowratio", &windowRatio);
 	event->Branch("fBigStep", biggeststep, "biggeststep[npulses]/F");
 	event->Branch("fPulseLength05", pulse_length05, "pulse_length05[npulses]/F");
@@ -955,11 +979,12 @@ int main(int argc, char* argv[])
 	baseline_plot->SetMarkerStyle(22);
 	baseline_plot->Draw("AP");
 
+	h_sum->Scale(1.0 / (double)Nevts);
 	// TObject* nosinfo = new TObject();
 	// nosinfo->SetUniqueID(number_of_samples);
 
 	cout << " Total sweeps is : " << Nevts << endl;
-	h_sum->Scale(1.0 / (double)Nevts);
+
 	event->Write();
 	bplot->Write();
 	h_sum->Write();

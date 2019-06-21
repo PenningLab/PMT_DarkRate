@@ -12,7 +12,7 @@
 
 */
 /////////////////////////////////////////////////////////////////////////////////////////
-//#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 
 #include <cstdio>
 #include <cstdlib>
@@ -86,7 +86,7 @@ double resistance = 50;
 int baseline_samples_set = 160;
 int MovingWindowSize;
 int iteration = 0.0;
-int pth = 5.0;
+int pth = 3.0;
 int promptwindow = 300;
 // input parameters
 int number_of_samples;
@@ -214,7 +214,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 
 		double temp_bigstep = 0;
 
-		if (std::fabs(integral) > pThresh)
+		if ((integral) > pThresh)
 		{
 			if (debug_mode)
 			{
@@ -222,7 +222,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 			}
 			left = i;
 			integral = 1.0e9;
-			while (std::fabs(integral) > eThresh && left > windowSize)
+			while ((integral) > eThresh && left > windowSize)
 			{
 				left--;
 				integral = SimpsIntegral(v, b, left, left + windowSize);
@@ -243,7 +243,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 			bool end = false;
 			while (!end)
 			{
-				while (std::fabs(integral) > eThresh && right < nos - 1)
+				while (integral > eThresh && right < nos - 1)
 				{
 					right++;
 					integral = SimpsIntegral(v, b, right - windowSize, right);
@@ -262,7 +262,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 				{
 					r++;
 					integral = SimpsIntegral(v, b, r - windowSize, r);
-					if (std::fabs(integral) > pThresh)
+					if ((integral) > pThresh)
 					{
 						right = r;
 						end = false;
@@ -286,7 +286,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 				{
 					max = s;
 					temp_peak = j;
-					if (j > 0 && std::fabs(v[j] - v[j - 1]) > temp_bigstep)
+					if (j > 0 && (v[j] - v[j - 1]) > temp_bigstep)
 						temp_bigstep = v[j] - v[j - 1];
 				}
 				// if((right-j)<(temp_peak-left))
@@ -313,14 +313,14 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 			if (right > nos)
 				continue;
 
-			if (std::fabs(SimpsIntegral(v, b, left, right)) <= eThresh)
+			if ((SimpsIntegral(v, b, left, right)) <= eThresh)
 			{
 				i = right - 1;
 				continue;
 			}
 			i = right;
 
-			if (std::fabs(max) < pulse_height_thresh)
+			if ((max) < pulse_height_thresh)
 				continue;
 
 			startv.push_back(temp_startv);
