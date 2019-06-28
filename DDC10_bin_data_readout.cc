@@ -500,7 +500,7 @@ bool readlivetime(char datafilename[])
 		if (std::getline(blank, item, c))
 			dum1 = std::atoi(item.data());
 		if (std::getline(blank, item, c))
-			liveentry = std::stol(item.data());
+			liveentry = std::atol(item.data());
 
 		vlivetime[Nevts - evtcounter] = (double)liveentry / 6e8;
 		// cout << iev << ", live entry is: " << liveentry << ", livetime is: " << vlivetime[Nevts - evtcounter] << endl;
