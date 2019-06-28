@@ -80,6 +80,8 @@ int promptwindow = 300;
 int MovingWindowSize;
 int iteration = 0.0;
 int pth = 3.5;
+int windowstart = 10;
+int windowfin = 40;
 
 // input parameters
 int number_of_samples;
@@ -125,7 +127,7 @@ float CalibratedTime[kMaxPulses];
 // float windowratio;
 // float pulsebaseline_rms;
 
-float triggerHeight;
+float triggerHeight = 0;
 float triggerPosition;
 float triggerWidth;
 
@@ -133,6 +135,7 @@ float event_charge;
 float event_charge_ten;
 float event_baseline;
 float event_rms;
+float event_windowCharge;
 int npulses = 0;
 vector<double> vlivetime;
 
@@ -173,14 +176,15 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 
 	double pThresh = (trig ? trigPulseThresh : pulseThresh) * rms * windowSize;
 	double eThresh = edgeThresh * rms * windowSize;
-	triggerHeight = 0;
+	if (trig)
+		triggerHeight = 0;
 	double temp_charge = 0;
 	double temp_ten_charge = 0;
 	double pulse_height_thresh = pth * rms;
 	// cout<<" vector size is : "<<v.size()<<endl;
 	// getchar();
 	// Let's looking for the Pulses
-	for (int i = baseline_samples_set; i < nos - windowSize; i++)
+	for (int i = 0; i < nos - windowSize; i++)
 	{
 		// std::cout << "Sample " << i << std::endl;
 		double integral = SimpsIntegral(v, b, i, i + windowSize);
@@ -360,7 +364,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 			else if (triggerHeight < max)
 			{
 				triggerHeight = max;
-				triggerPosition = temp_peak;
+				triggerPosition = left;
 				triggerWidth = right - left;
 				pulse_left_edge.push_back(left);
 				pulse_right_edge.push_back(right);
@@ -373,6 +377,8 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 	{
 		event_charge_ten = temp_ten_charge;
 		event_charge = temp_charge;
+		if (triggerHeight != 0)
+			event_windowCharge = SimpsIntegral(v, b, triggerPosition + windowstart, triggerPosition + windowfin) / resistance;
 	}
 }
 // Find the baseline
@@ -625,6 +631,11 @@ int main(int argc, char* argv[])
 			readlogs = true;
 			// pydir = argv[i + 1];
 		}
+		else if (arg == "-spe")
+		{
+			windowstart = atoi(argv[i + 1]);
+			windowfin = atoi(argv[i + 2]);
+		}
 	}
 
 	double fixedbase;
@@ -752,6 +763,7 @@ int main(int argc, char* argv[])
 	event->Branch("fCharge_pC", &event_charge, "event_charge/F");
 	event->Branch("fChargePrompt_pC", &event_charge_ten, "event_charge_ten/F");
 	event->Branch("fBaseline_V", &event_baseline, "event_baseline/F");
+	event->Branch("fBaselinerms_V", &event_rms, "event_rms/F");
 	event->Branch("bIsGood", &isgood, "isgood/O");
 	event->Branch("nPulses", &npulses, "npulses/I");
 	event->Branch("fPulseHeight_V", amplitude, "amplitude[npulses]/F");
@@ -776,6 +788,7 @@ int main(int argc, char* argv[])
 		event->Branch("fTriggerTime", &trigger_t, "trigger_t/F");
 		event->Branch("fTriggerHeight_V", &triggerHeight, "triggerHeight/F");
 		event->Branch("fTriggerWidth", &triggerWidth, "triggerWidth/F");
+		event->Branch("dWindowCharge", &event_windowCharge, "event_windowCharge/D");
 	}
 	// Store the waveform plot for debugging
 	TCanvas* waveplot;

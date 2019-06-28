@@ -202,6 +202,7 @@ int main(int argc, char* argv[])
 	float event_charge_ten;
 	float event_baseline;
 	float event_rms;
+	double event_windowCharge;
 	double livetime;
 	float event_rate;
 	int npulses = 0;
@@ -218,6 +219,7 @@ int main(int argc, char* argv[])
 	event->Branch("fCharge_pC", &event_charge, "event_charge/F");
 	event->Branch("fChargePrompt_pC", &event_charge_ten, "event_charge_ten/F");
 	event->Branch("fBaseline_V", &event_baseline, "event_baseline/F");
+	event->Branch("fBaselinerms_V", &event_rms, "event_rms/F");
 	event->Branch("bIsGood", &isgood, "isgood/O");
 	event->Branch("nPulses", &npulses, "npulses/I");
 	event->Branch("fPulseHeight_V", amplitude, "amplitude[npulses]/F");
@@ -242,6 +244,7 @@ int main(int argc, char* argv[])
 		event->Branch("fTriggerTime", &triggerPosition, "triggerPosition/F");
 		event->Branch("fTriggerHeight_V", &triggerHeight, "triggerHeight/F");
 		event->Branch("fTriggerWidth", &triggerWidth, "triggerWidth/F");
+		event->Branch("dWindowCharge", &event_windowCharge, "event_windowCharge/D");
 	}
 
 	//    short int sweep=0;
@@ -289,6 +292,7 @@ int main(int argc, char* argv[])
 		tree->SetBranchAddress("fCharge_pC", &event_charge);
 		tree->SetBranchAddress("fChargePrompt_pC", &event_charge_ten);
 		tree->SetBranchAddress("fBaseline_V", &event_baseline);
+		tree->SetBranchAddress("fBaselinerms_V", &event_rms);
 		tree->SetBranchAddress("bIsGood", &isgood);
 		tree->SetBranchAddress("nPulses", &npulses);
 		tree->SetBranchAddress("fPulseHeight_V", amplitude);
@@ -311,6 +315,7 @@ int main(int argc, char* argv[])
 			tree->SetBranchAddress("fTriggerTime", &triggerPosition);
 			tree->SetBranchAddress("fTriggerHeight_V", &triggerHeight);
 			tree->SetBranchAddress("fTriggerWidth", &triggerWidth);
+			tree->SetBranchAddress("dWindowCharge", &event_windowCharge);
 		}
 		// if livetime recorded and internal trigger get rate using that
 		// if external trigger and external trigger time provided use nsamples to calculate rate
