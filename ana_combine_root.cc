@@ -244,7 +244,7 @@ int main(int argc, char* argv[])
 		event->Branch("fTriggerTime", &triggerPosition, "triggerPosition/F");
 		event->Branch("fTriggerHeight_V", &triggerHeight, "triggerHeight/F");
 		event->Branch("fTriggerWidth", &triggerWidth, "triggerWidth/F");
-		event->Branch("dWindowCharge", &event_windowCharge, "event_windowCharge/D");
+		event->Branch("dWindowCharge_pC", &event_windowCharge, "event_windowCharge/D");
 	}
 
 	//    short int sweep=0;
@@ -315,7 +315,7 @@ int main(int argc, char* argv[])
 			tree->SetBranchAddress("fTriggerTime", &triggerPosition);
 			tree->SetBranchAddress("fTriggerHeight_V", &triggerHeight);
 			tree->SetBranchAddress("fTriggerWidth", &triggerWidth);
-			tree->SetBranchAddress("dWindowCharge", &event_windowCharge);
+			tree->SetBranchAddress("dWindowCharge_pC", &event_windowCharge);
 		}
 		// if livetime recorded and internal trigger get rate using that
 		// if external trigger and external trigger time provided use nsamples to calculate rate

@@ -788,7 +788,7 @@ int main(int argc, char* argv[])
 		event->Branch("fTriggerTime", &trigger_t, "trigger_t/F");
 		event->Branch("fTriggerHeight_V", &triggerHeight, "triggerHeight/F");
 		event->Branch("fTriggerWidth", &triggerWidth, "triggerWidth/F");
-		event->Branch("dWindowCharge", &event_windowCharge, "event_windowCharge/D");
+		event->Branch("dWindowCharge_pC", &event_windowCharge, "event_windowCharge/D");
 	}
 	// Store the waveform plot for debugging
 	TCanvas* waveplot;
