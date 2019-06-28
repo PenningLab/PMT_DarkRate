@@ -318,14 +318,18 @@ int main(int argc, char* argv[])
 		// tree->SetBranchAddress("triggerpulseWidth",&triggerpulseWidth);
 		// tree->SetBranchAddress("triggerpulsePeakTime",&triggerpulsePeakTime);
 		cout << " processing root file No. " << i << endl;
-
+		double totaltime = 0;
+		double totalpulse = 0;
 		int nument = tree->GetEntries();
 		for (int j = 0; j < nument; j++)
 		{
 			tree->GetEntry(j);
 			// loop throught pulses
 			if (stored_livetime)
+			{
+				totaltime += livetime;
 				event_rate = (double)npulses / livetime;
+			}
 			event->Fill();
 			if (!isgood)
 				continue;
@@ -343,8 +347,23 @@ int main(int argc, char* argv[])
 				{
 					h_avgphd->Fill(ns, waveforms[ns]);
 				}
+				if (charge_v[i] > 0.2)
+				{
+					totalpulse++;
+				}
 			}
 		}
+		if (stored_livetime)
+		{
+			dark_count.back() = totalpulse / totaltime;
+			// dark_count_error.back() /= totaltime;
+		}
+		else
+		{
+			dark_count.back() *= 1e8;
+			dark_count_error.back() *= 1e8;
+		}
+
 		std::cout << " Finished processing file No. " << i << std::endl;
 		fin->Close();
 	} // main for loop
@@ -354,15 +373,16 @@ int main(int argc, char* argv[])
 	int backcount = 0;
 	for (int h = 0; h < dark_count.size(); h++)
 	{
-		double temp_dark_rate = dark_count[h] * 1e8;
-		double temp_dark_rate_error = dark_count_error[h] * 1e8;
+		double temp_dark_rate = dark_count[h];
+		double temp_dark_rate_error = dark_count_error[h];
 		if (temp_dark_rate < 0)
 		{
 			backcount++;
 			continue;
 		}
 		dark_plot->SetPoint(h - backcount, h, temp_dark_rate);
-		dark_plot->SetPointError(h - backcount, 0, temp_dark_rate_error);
+		if (!stored_livetime)
+			dark_plot->SetPointError(h - backcount, 0, temp_dark_rate_error);
 	}
 
 	dark_plot->SetName("dark_plot");

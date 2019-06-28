@@ -90,7 +90,7 @@ done
 
 for j in `seq ${init} ${num}`
 do
- cmdarr=(./DDC10_bin_data_readout -wd ${dirname} -i ${j}.bin -o ${j}_${outname} -wform ${wformchan} -e)
+ cmdarr=(./DDC10_bin_data_readout -wd ${dirname} -i ${j}.bin -o ${j}_${outname} -wform ${wformchan} -e -readlogs)
 
 
  if [ "${bsam}" -ne -1 ]; then

@@ -66,7 +66,7 @@ bool isgood = true;
 
 // define pulse finding parameters
 double pulseThresh = 5.0;
-double trigPulseThresh = 8.0;
+double trigPulseThresh = 3.5;
 double windowSize = 3.0;
 double edgeThresh = 3.0;
 double lookforward = 3.0;
@@ -79,7 +79,7 @@ int promptwindow = 300;
 // smoothing parameters
 int MovingWindowSize;
 int iteration = 0.0;
-int pth = 5.0;
+int pth = 3.5;
 
 // input parameters
 int number_of_samples;
@@ -173,14 +173,14 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 
 	double pThresh = (trig ? trigPulseThresh : pulseThresh) * rms * windowSize;
 	double eThresh = edgeThresh * rms * windowSize;
-
+	triggerHeight = 0;
 	double temp_charge = 0;
 	double temp_ten_charge = 0;
 	double pulse_height_thresh = pth * rms;
 	// cout<<" vector size is : "<<v.size()<<endl;
 	// getchar();
 	// Let's looking for the Pulses
-	for (int i = baseline_samples_set; i < v.size() - windowSize; i++)
+	for (int i = baseline_samples_set; i < nos - windowSize; i++)
 	{
 		// std::cout << "Sample " << i << std::endl;
 		double integral = SimpsIntegral(v, b, i, i + windowSize);
@@ -192,7 +192,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 
 		double temp_bigstep = 0;
 
-		if (integral > pThresh)
+		if ((v[i] - b) > pulse_height_thresh)
 		{
 			if (debug_mode)
 			{
@@ -200,7 +200,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 			}
 			left = i;
 			integral = 1.0e9;
-			while (integral > eThresh && left > windowSize)
+			while ((integral) > eThresh && left > windowSize)
 			{
 				left--;
 				integral = SimpsIntegral(v, b, left, left + windowSize);
@@ -221,7 +221,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 			bool end = false;
 			while (!end)
 			{
-				while (integral > eThresh && right < nos - 1)
+				while ((integral) > eThresh && right < nos - 1)
 				{
 					right++;
 					integral = SimpsIntegral(v, b, right - windowSize, right);
@@ -240,7 +240,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 				{
 					r++;
 					integral = SimpsIntegral(v, b, r - windowSize, r);
-					if (integral > pThresh)
+					if ((integral) > pThresh)
 					{
 						right = r;
 						end = false;
@@ -260,7 +260,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 			for (int j = left; j < right; j++)
 			{
 				double s = v[j] - b;
-				if (s > max)
+				if ((s) > max)
 				{
 					max = s;
 					temp_peak = j;
@@ -322,13 +322,11 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 			}
 			i = right;
 
-			if (max < pulse_height_thresh)
-				continue;
+			// if (max < pulse_height_thresh)
+			//	continue;
 
 			startv.push_back(temp_startv);
 			endv.push_back(temp_endv);
-			pulse_left_edge.push_back(left);
-			pulse_right_edge.push_back(right);
 			if (signal_start)
 			{
 				npulses++;
@@ -356,13 +354,16 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 				temp_charge += charge_v[npulses - 1];
 				if (i < promptwindow)
 					temp_ten_charge += charge_v[npulses - 1];
+				pulse_left_edge.push_back(left);
+				pulse_right_edge.push_back(right);
 			}
-			else
+			else if (triggerHeight < max)
 			{
 				triggerHeight = max;
 				triggerPosition = temp_peak;
 				triggerWidth = right - left;
-				break;
+				pulse_left_edge.push_back(left);
+				pulse_right_edge.push_back(right);
 			}
 
 		} // if statement
@@ -422,7 +423,7 @@ double Trigger_info(vector<float> waveform)
 	}
 	else
 	{
-		time = (pulse_left_edge[0]);
+		time = (pulse_left_edge.back());
 	}
 	pulse_left_edge.clear();
 	pulse_right_edge.clear();
@@ -733,7 +734,7 @@ int main(int argc, char* argv[])
 	h_sum->GetXaxis()->SetLabelFont(132);
 	h_sum->GetYaxis()->SetLabelFont(132);
 	// Tetsing the dark hit counter
-	TH1F* dark_hits = new TH1F("dark_rate", "dark_rate", 25000, 0, 50000);
+	TH1F* dark_hits = new TH1F("dark_rate", "dark_rate", 50000, 0, 50000);
 	// dark_hits->SetBit(TH1::kCanRebin);
 
 	// Create Tree to store properties of pulses found by pulse finder
@@ -827,7 +828,7 @@ int main(int argc, char* argv[])
 		rms_value = (use_basefile ? fixedrms : 0);
 
 		thisbase = (use_basefile ? fixedbase : baseline_rms(baselinev, raw_waveform, &rms_value));
-		extract_event(raw_waveform, thisbase, rms_value, number_of_samples, (use_trigger ? trigger_t : 0));
+		extract_event(raw_waveform, thisbase, rms_value, (lim_sams ? num_sams : number_of_samples), (use_trigger ? trigger_t : 0));
 
 		if (debug_mode)
 		{
