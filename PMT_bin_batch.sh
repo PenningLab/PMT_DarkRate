@@ -15,7 +15,9 @@ trig=-1
 invert=-1
 win=-1
 usebase=-1
-
+sp=-1
+winup=0
+winlow=0
 it=-1
 outname="PMT_Trigger.root"
 nsamps=-1
@@ -60,24 +62,30 @@ while true; do
 		--win )
 			win=$2
 			echo "using window size ${win}"
-			shift
+			shift 2
 			;;
 		--bfile )
 			usebase=0
 			base_filename=$2
 			echo "using baseline file ${base_filename}"
-			shift
+			shift 2
 			;;
 		--nsam )
 			nsamps=$2
 			echo "Only analysing first ${nsamps} samples"
-			shift
+			shift 2
 			;;
 		--sit )
 			it=$2
 			echo "using baseline file ${base_filename}"
 			shift 2
 			;;
+	       --spe )
+		       sp=0
+		       winlow=$2
+		       winup=$3
+		       shift 3
+		       ;;
 		-- )
 			shift ;
 			break
@@ -94,29 +102,32 @@ do
 
 
  if [ "${bsam}" -ne -1 ]; then
-  cmdarr+=(-bs ${bsam})
+  cmdarr+=("-bs" ${bsam})
  fi
  if [ "${pth}" -ne -1 ]; then
-  cmdarr+=(-pt ${pth})
+  cmdarr+=("-pt" ${pth})
  fi
  if [ "${trig}" -ne -1 ]; then
-  cmdarr+=(-t ${trig})
+  cmdarr+=("-t" ${trig})
  fi
  if [ "${win}" -ne -1 ]; then
-  cmdarr+=(-win ${win})
+  cmdarr+=("-win" ${win})
  fi
  if [ "${usebase}" -ne -1 ]; then
-  cmdarr+=(-bf ${base_filename})
+  cmdarr+=("-bf" ${base_filename})
  fi
  if [ "${invert}" -eq -1 ]; then
-  cmdarr+=(-invert)
+  cmdarr+=("-invert")
  fi
  if [ "${nsamps}" -ne -1 ]; then
-  cmdarr+=(-sams ${nsamps})
+  cmdarr+=("-sams" ${nsamps})
 fi
  if [ "${it}" -ne -1 ]; then
-  cmdarr+=(-sit ${it})
+  cmdarr+=("-sit" ${it})
  fi
+if [ "${sp}" -ne -1 ]; then
+ cmdarr+=("-spe" ${winlow} ${winup})
+fi
  echo "${cmdarr[@]}"
  "${cmdarr[@]}"
  #echo "file ${j} complete"

@@ -51,9 +51,41 @@
 #include <TVectorD.h>
 
 float shift = 0;
+double resistance = 0.005;
 
 //#include <boost/date_time.hpp>
 using namespace std;
+
+double SimpsIntegral(const float samples[], double baseline, int start, int end)
+{
+	int len;
+	double qsum = 0.0;
+	if ((end - start) % 2 == 0)
+	{
+		/* If there are an even number of samples, then there are an odd
+		number of intervals; but Simpson's rule works only on an even
+		number of intervals. Therefore we use Simpson's method on the
+		all but the final sample, and integrate the last interval
+		using the trapezoidal rule */
+		len = end - start - 1;
+		qsum += (samples[end - 1] + samples[end - 2] - 2 * baseline) / 2.0;
+	}
+	else
+		len = end - start;
+
+	double qsimps;
+	qsimps = samples[start] - baseline;
+	for (int i = start; i < start + len; i += 2)
+		qsimps += (samples[i] - baseline) * 4;
+	for (int i = start + 1; i < len + start - 1; i += 2)
+		qsimps += (samples[i] - baseline) * 2;
+	qsimps += samples[start + len - 1] - baseline;
+	qsimps /= 3.0;
+
+	qsum += qsimps;
+	return qsum;
+}
+
 static void show_usage(string name)
 {
 	cout << " Usage : ./ana_combine_root [-co] file1 " << name << " Options:\n"
@@ -89,6 +121,9 @@ int main(int argc, char* argv[])
 	double num_sweeps = -1;
 	std::string pydir;
 	int initial_run = 0;
+	int windowstart = 18;
+	int windowfin = 30;
+	bool respe = false;
 	if (argc < 2)
 	{
 		show_usage(argv[0]);
@@ -144,6 +179,17 @@ int main(int argc, char* argv[])
 			use_frac = true;
 			frac_time = atof(argv[i + 1]);
 			frac_start = atof(argv[i + 2]);
+		}
+		else if (arg == "-spe")
+		{
+			respe = true;
+			windowstart = atoi(argv[i + 1]);
+			windowfin = atoi(argv[i + 2]);
+		}
+		else if (arg == "-t")
+		{
+			// trig_channel = atoi(argv[i + 1]);
+			use_trigger = true;
 		}
 	}
 	if (out_dir == "")
@@ -202,7 +248,7 @@ int main(int argc, char* argv[])
 	float event_charge_ten;
 	float event_baseline;
 	float event_rms;
-	double event_windowCharge;
+	float event_windowCharge;
 	double livetime;
 	float event_rate;
 	int npulses = 0;
@@ -244,7 +290,7 @@ int main(int argc, char* argv[])
 		event->Branch("fTriggerTime", &triggerPosition, "triggerPosition/F");
 		event->Branch("fTriggerHeight_V", &triggerHeight, "triggerHeight/F");
 		event->Branch("fTriggerWidth", &triggerWidth, "triggerWidth/F");
-		event->Branch("dWindowCharge_pC", &event_windowCharge, "event_windowCharge/D");
+		event->Branch("fWindowCharge_pC", &event_windowCharge, "event_windowCharge/F");
 	}
 
 	//    short int sweep=0;
@@ -315,7 +361,7 @@ int main(int argc, char* argv[])
 			tree->SetBranchAddress("fTriggerTime", &triggerPosition);
 			tree->SetBranchAddress("fTriggerHeight_V", &triggerHeight);
 			tree->SetBranchAddress("fTriggerWidth", &triggerWidth);
-			tree->SetBranchAddress("dWindowCharge_pC", &event_windowCharge);
+			tree->SetBranchAddress("fWindowCharge_pC", &event_windowCharge);
 		}
 		// if livetime recorded and internal trigger get rate using that
 		// if external trigger and external trigger time provided use nsamples to calculate rate
@@ -339,6 +385,11 @@ int main(int argc, char* argv[])
 			if (!isgood)
 				continue;
 
+			if (respe && (triggerPosition + windowfin) < number_of_samples)
+			{
+				event_windowCharge
+				    = SimpsIntegral(waveforms, event_baseline, triggerPosition + windowstart, triggerPosition + windowfin) / resistance;
+			}
 			for (int sam = 0; sam < number_of_samples; sam++)
 			{
 				h_sum->Fill(sam, waveforms[sam]);
