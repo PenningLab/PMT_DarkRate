@@ -1,0 +1,5 @@
+#include "DetectorMCTruthEvent.h"
+#include "DetectorPulseMCTruth.h"
+#include "DetectorVertexMCTruth.h"
+#include "DarkCountMCTruth.h"
+#include "libProjectInstances.h"
