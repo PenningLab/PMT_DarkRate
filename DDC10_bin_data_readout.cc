@@ -81,7 +81,7 @@ int MovingWindowSize;
 int iteration = 0.0;
 int pth = 3.5;
 int windowstart = 18;
-int windowfin = 30;
+int windowfin = 45;
 
 // input parameters
 int number_of_samples;
@@ -176,8 +176,8 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 
 	double pThresh = (trig ? trigPulseThresh : pulseThresh) * rms * windowSize;
 	double eThresh = edgeThresh * rms * windowSize;
-	isgood=true;
-	event_windowCharge =0;
+	isgood = true;
+	event_windowCharge = 0;
 	if (trig)
 		triggerHeight = 0;
 	double temp_charge = 0;
@@ -380,7 +380,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 		event_charge_ten = temp_ten_charge;
 		event_charge = temp_charge;
 		event_windowCharge = SimpsIntegral(v, b, trigger + windowstart, trigger + windowfin) / resistance;
-		//if(isgood)
+		// if(isgood)
 		//	std::cout<<event_windowCharge<<std::endl;
 	}
 }
