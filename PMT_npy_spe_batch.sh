@@ -10,18 +10,17 @@ dirname=$2
 num=$3
 init=0
 bsam=-1
-pth=-1
+pth=6
 trig=-1
 invert=-1
-win=-1
+win=5
 usebase=-1
-sp=-1
-winup=0
-winlow=0
+
 it=-1
 outname="PMT_Trigger.root"
 nsamps=-1
 shift 3
+
 
 TEMP=`getopt -o i:b:b:p:T:o: --long pmt,tri,sit:,win:,bfile:,nsam: -n 'PMT_bin_batch.sh' -- "$@"`
 
@@ -62,30 +61,24 @@ while true; do
 		--win )
 			win=$2
 			echo "using window size ${win}"
-			shift 2
+			shift
 			;;
 		--bfile )
 			usebase=0
 			base_filename=$2
 			echo "using baseline file ${base_filename}"
-			shift 2
+			shift
 			;;
 		--nsam )
 			nsamps=$2
 			echo "Only analysing first ${nsamps} samples"
-			shift 2
+			shift
 			;;
 		--sit )
 			it=$2
 			echo "using baseline file ${base_filename}"
 			shift 2
 			;;
-	       --spe )
-		       sp=0
-		       winlow=$2
-		       winup=$3
-		       shift 3
-		       ;;
 		-- )
 			shift ;
 			break
@@ -96,39 +89,47 @@ while true; do
 	esac
 done
 
+satlist=(3p5 4p0 4p5 5p0 5p5 6p0 6p5 7p0 7p5)
+
 for j in `seq ${init} ${num}`
+#for j in "${satlist[@]}"
 do
- cmdarr=(./DDC10_bin_data_readout -wd ${dirname} -i ${j}.bin -o ${j}_${outname} -wform ${wformchan} -e -readlogs)
+ fnamefront=20190502_ODPMT_1419V_FinCageAmp3ChD_DDCCh${wformchan}_50kx8k_Seq${j}_LED2p8
+ fnameout=${fnamefront}_${pth}Sig_${win}Win.root
+ cmdarr=(./DDC10_npy_data_readout -wd ${dirname} -i ${fnamefront}.npy -o ${fnameout})
 
 
  if [ "${bsam}" -ne -1 ]; then
-  cmdarr+=("-bs" ${bsam})
+  cmdarr+=(-bs ${bsam})
  fi
  if [ "${pth}" -ne -1 ]; then
-  cmdarr+=("-pt" ${pth})
+  cmdarr+=(-pt ${pth})
  fi
  if [ "${trig}" -ne -1 ]; then
-  cmdarr+=("-t" ${trig})
+  cmdarr+=(-t ${trig})
  fi
  if [ "${win}" -ne -1 ]; then
-  cmdarr+=("-win" ${win})
+  cmdarr+=(-win ${win})
  fi
  if [ "${usebase}" -ne -1 ]; then
-  cmdarr+=("-bf" ${base_filename})
+  cmdarr+=(-bf ${base_filename})
  fi
  if [ "${invert}" -eq -1 ]; then
-  cmdarr+=("-invert")
+  cmdarr+=(-invert)
  fi
  if [ "${nsamps}" -ne -1 ]; then
-  cmdarr+=("-sams" ${nsamps})
+  cmdarr+=(-sams ${nsamps})
 fi
  if [ "${it}" -ne -1 ]; then
-  cmdarr+=("-sit" ${it})
+  cmdarr+=(-sit ${it})
  fi
-if [ "${sp}" -ne -1 ]; then
- cmdarr+=("-spe" ${winlow} ${winup})
-fi
  echo "${cmdarr[@]}"
  "${cmdarr[@]}"
+ if [[ ! -d RochesterPulses/SPE_${pth}Sig_${win}Win ]];then
+  mkdir RochesterPulses/SPE_${pth}Sig_${win}Win
+ fi
+ if [[ -f ${dirname}/${fnameout} ]];then
+  mv ${dirname}/${fnameout} RochesterPulses/SPE_${pth}Sig_${win}Win/${fnameout}
+ fi
  #echo "file ${j} complete"
 done

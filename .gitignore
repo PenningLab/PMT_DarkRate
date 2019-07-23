@@ -1,0 +1,12 @@
+RochesterData
+test
+RochesterPulses
+__pycache__
+*.d
+*.so
+*.pcm
+Pulses
+*.png
+*~
+*.bin
+*.log

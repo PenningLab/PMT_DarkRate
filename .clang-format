@@ -1,0 +1,14 @@
+---
+BasedOnStyle: WebKit
+IndentWidth: 4
+ColumnLimit: 150
+BreakBeforeBraces: Allman
+AllowShortFunctionsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+NamespaceIndentation: None
+UseTab: ForIndentation
+TabWidth: 4
+# BreakConstructorInitializersStyle: BCIS_BeforeColon
+# ConstructorInitializerAllOnOneLineOrOnePerLine: false
+---
