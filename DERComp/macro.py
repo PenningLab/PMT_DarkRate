@@ -27,7 +27,7 @@ def load_chain(fileList, chain):
 parser = argparse.ArgumentParser(description='Wrapper for TSelector-based analysis on LZ RQ files',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('macro', type=str, help='TSelector-based analysis macro ( .C file )')
 parser.add_argument('fileList', type=str, help='List of RQ files to process')
-parser.add_argument('--file',action=store_true,help='Single file to process')
+parser.add_argument('--file',action='store_true',help='Single file to process')
 #parser.add_argument('--ff', action='store_true',help='List of RQ files to process')
 parser.add_argument('--outfile', default='', type=str, help='Output histogram file name; empty = <fileList>.root')
 parser.add_argument('-n', dest='nevents', default=ROOT.TTree.kMaxEntries, type=int, help='# of events to process; -1 = ALL')
