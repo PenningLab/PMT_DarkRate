@@ -56,7 +56,7 @@ if nevents == -1:
 """
 #______________________________________
 # build the Events and RQMCTruth TChains and friend them
-chain = ROOT.TChain('DataTree')
+chain = ROOT.TChain('Data')
 if not args.file:
 	load_chain(fileList, chain)
 else:
