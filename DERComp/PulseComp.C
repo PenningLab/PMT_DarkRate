@@ -86,6 +86,8 @@ Bool_t PulseComp::Process(Long64_t entry)
 
 	fReader.SetLocalEntry(entry);
 	std::vector<float> rawform;
+	if (entry%1000==0)
+		std::cout<<"Processing entry "<<entry<<std::endl;
 	if (getwaveform(rawform))
 	{
 		// std::cout << "blastin off again" << std::endl;
