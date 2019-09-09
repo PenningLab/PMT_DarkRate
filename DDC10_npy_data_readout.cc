@@ -152,6 +152,10 @@ float event_charge;
 float event_charge_ten;
 float event_baseline;
 float event_rms;
+float event_windowCharge;
+
+int windowstart = 1190;
+int windowfin = 1230;
 int npulses = 0;
 // vector<double> vlivetime;
 
@@ -198,7 +202,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 	double temp_ten_charge = 0;
 	double pulse_height_thresh = pth * rms;
 	npulses = 0;
-	skipevent = false;
+	skipevent = true;
 	// cout<<" vector size is : "<<v.size()<<endl;
 	// getchar();
 	// Let's looking for the Pulses
@@ -354,7 +358,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 				if (i - trigger < promptwindow)
 					temp_ten_charge += charge_v[npulses - 1];
 				if (left < baseline_samples_set)
-					skipevent = true;
+					skipevent = false;
 			}
 			else
 			{
@@ -380,6 +384,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 	{
 		event_charge_ten = temp_ten_charge;
 		event_charge = temp_charge;
+		event_windowCharge = 1e4 * timescale * SimpsIntegral(v, b, windowstart, windowfin) / resistance;
 	}
 }
 // Find the baseline
@@ -713,6 +718,7 @@ int main(int argc, char* argv[])
 	event->Branch("raw_waveforms", waveforms, "waveforms[number_of_samples]/F");
 
 	event->Branch("bIsGood", &skipevent, "skipevent/O");
+	event->Branch("fWindowCharge_pC", &event_windowCharge, "event_windowCharge/F");
 	event->Branch("fCharge_pC", &event_charge, "event_charge/F");
 	event->Branch("fChargePrompt_pC", &event_charge_ten, "event_charge_ten/F");
 	event->Branch("fBaseline_V", &event_baseline, "event_baseline/F");
