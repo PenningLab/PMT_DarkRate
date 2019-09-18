@@ -154,8 +154,8 @@ float event_baseline;
 float event_rms;
 float event_windowCharge;
 
-int windowstart = 1190;
-int windowfin = 1230;
+int windowstart = 1180;
+int windowfin = 1250;
 int npulses = 0;
 // vector<double> vlivetime;
 
@@ -206,7 +206,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 	// cout<<" vector size is : "<<v.size()<<endl;
 	// getchar();
 	// Let's looking for the Pulses
-	for (int i = baseline_samples_set; i < v.size() - windowSize; i++)
+	for (int i = 0; i < v.size() - windowSize; i++)
 	{
 		// std::cout << "Sample " << i << std::endl;
 		double integral = SimpsIntegral(v, b, i, i + windowSize);

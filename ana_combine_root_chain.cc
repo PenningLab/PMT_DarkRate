@@ -90,6 +90,7 @@ int main(int argc, char* argv[])
 	double num_sweeps = -1;
 	std::string pydir;
 	int initial_run = 0;
+	float chargecut = 0;
 	if (argc < 2)
 	{
 		show_usage(argv[0]);
@@ -146,6 +147,10 @@ int main(int argc, char* argv[])
 			frac_time = atof(argv[i + 1]);
 			frac_start = atof(argv[i + 2]);
 		}
+		else if (arg == "-ccut")
+		{
+			chargecut = atof(argv[i + 1]);
+		}
 	}
 	if (out_dir == "")
 		out_dir = working_dir;
@@ -201,6 +206,7 @@ int main(int argc, char* argv[])
 	float triggerWidth;
 
 	float event_charge;
+	float event_windowcharge;
 	float event_charge_ten;
 	float event_baseline;
 	float event_rms;
@@ -218,6 +224,7 @@ int main(int argc, char* argv[])
 		event->Branch("dEventRate_Hz", &event_rate, "event_rate/D");
 	}
 	event->Branch("fCharge_pC", &event_charge, "event_charge/F");
+	event->Branch("fWindowCharge_pC", &event_windowcharge, "event_windowCharge/F");
 	event->Branch("fChargePrompt_pC", &event_charge_ten, "event_charge_ten/F");
 	event->Branch("fBaseline_V", &event_baseline, "event_baseline/F");
 	event->Branch("bIsGood", &fillt, "fillt/O");
@@ -239,6 +246,13 @@ int main(int argc, char* argv[])
 	event->Branch("fPulseLength95", pulse_length95, "pulse_length95[npulses]/F");
 	event->Branch("fPulseLength99", pulse_length99, "pulse_length99[npulses]/F");
 
+	TTree* filtertree = new TTree("filter", "filterTree");
+	float filterResponse, charge;
+	int n;
+	filtertree->Branch("ADCCns", &filterResponse, "filterResponse/F");
+	filtertree->Branch("n", &n, "n/I");
+	filtertree->Branch("Charge", &charge, "charge/F");
+
 	if (use_trigger)
 	{
 		// event->Branch("nTriggers", &nTrigs, "nTriggers/I");
@@ -256,8 +270,16 @@ int main(int argc, char* argv[])
 	// int run=0;
 	vector<double> dark_count;
 	vector<double> dark_count_error;
-	TH1F* h_avgphd = new TH1F("h_avgphd", "Average Pulse;Sample (10ns);ADC counts", 8192, 0, 8192);
+	TH1F* h_avgphd = new TH1F("h_avgphd", "Average Pulse;Sample (10ns);ADC counts", 500, -250, 250);
 	h_avgphd->Sumw2();
+	TH2F* h_responsepop = new TH2F("h_responsepop",
+	    "Filter peak response density (SPE);n [samples];Peak Filter Response [ADCC*samples];Fraction of Pulses", 20, 0, 20, 2000, 0, 2000);
+	TH2F* h_responsepopno = new TH2F("h_responsepopno",
+	    "Filter peak response density (Noise);n [samples];Peak Filter Response [ADCC*samples];Fraction of Pulses", 20, 0, 20, 2000, 0, 2000);
+	TH2F* h_responseEff
+	    = new TH2F("h_responseEff", "Filter peak response efficiency;n [samples];Threshold [ADCC*samples];Efficiency", 20, 0, 20, 2000, 0, 2000);
+	TH2F* h_responseEffno
+	    = new TH2F("h_responseEffno", "Filter peak response efficiency;n [samples];Threshold [ADCC*samples];Efficiency", 20, 0, 20, 2000, 0, 2000);
 	TH1D* h_sum = new TH1D("ADC_sum_waveform", ("#font[132]{WFD SumWaveForm}"), 10000, 0, 10000);
 	h_sum->SetXTitle("#font[132]{Sample (10ns)}");
 	h_sum->GetXaxis()->SetLabelFont(132);
@@ -271,6 +293,7 @@ int main(int argc, char* argv[])
 	cout << "Reading in files " << root_file_name << endl;
 	TChain* tree = new TChain("event");
 	int checkker = tree->Add(root_file_name);
+	int numspes = 0, popscale = 0, popscaleno = 0;
 	// TFile* fin = new TFile(root_file_name, "READ");
 	if (checkker <= 0 || tree->GetEntries() <= 0)
 	{
@@ -291,6 +314,8 @@ int main(int argc, char* argv[])
 		tree->SetBranchAddress("fCharge_pC", &event_charge);
 		tree->SetBranchAddress("fChargePrompt_pC", &event_charge_ten);
 		tree->SetBranchAddress("fBaseline_V", &event_baseline);
+		tree->SetBranchAddress("bIsGood", &fillt);
+		tree->SetBranchAddress("fWindowCharge_pC", &event_windowcharge);
 
 		tree->SetBranchAddress("nPulses", &npulses);
 		tree->SetBranchAddress("fPulseHeight_V", amplitude);
@@ -329,15 +354,16 @@ int main(int argc, char* argv[])
 		// tree->SetBranchAddress("triggerpulsePeakTime",&triggerpulsePeakTime);
 		// cout << " processing root file No. " << i << endl;
 		double numavp = 0;
+		// flaot plotscale = 0;
 		int nument = tree->GetEntries();
 		for (int j = 0; j < nument; j++)
 		{
 			tree->GetEntry(j);
 			// loop throught pulses
-			fillt = true;
+			// fillt = true;
 			if (j % 100 == 0)
 			{
-				cout << " This is sweep : " << j << endl;
+				cout << " This is sweep : " << j << ", filter = " << filterResponse << endl;
 			}
 			if (stored_livetime)
 				event_rate = (double)npulses / livetime;
@@ -352,18 +378,16 @@ int main(int argc, char* argv[])
 			{
 				int initialsam = (use_trigger ? (pl[k] + triggerStartSam) : pl[k]);
 				int finalsam = (use_trigger ? (pr[k] + triggerStartSam) : pr[k]);
-				if (initialsam < 1000)
+				if (fillt)
 				{
-					fillt = false;
+					// fillt = false;
 					break;
 				}
-/*
-				if (initialsam > 1220 && initialsam < 1180)
+				if (amplitude_position[k] > 1240 && amplitude_position[k] < 1150)
 					continue;
-*/
-				for (int ns = fmax(initialsam - 10, 0); ns < fmin(finalsam + 11, number_of_samples); ns++)
+				for (int ns = fmax(initialsam - 20, 0); ns < fmin(finalsam + 20, number_of_samples); ns++)
 				{
-					h_avgphd->Fill(ns - fmax(initialsam - 10, 0), waveforms[ns]);
+					h_avgphd->Fill(ns - amplitude_position[k], waveforms[ns]);
 				}
 				if (k > passedpulses)
 				{
@@ -388,6 +412,49 @@ int main(int argc, char* argv[])
 				}
 				numavp++;
 				passedpulses++;
+
+				charge = charge_v[k];
+				if (charge > chargecut)
+					popscale += 1;
+				if (charge <= chargecut)
+					popscaleno += 1;
+				for (n = 1; n < 17; ++n)
+				{
+					float tempres;
+					filterResponse = 0;
+					// float descale = 1 / (8192);
+					for (int ns = fmax(initialsam, 0); ns < fmin(finalsam, number_of_samples); ns++)
+					{
+						tempres = 0;
+						unsigned int endPoint = ns;
+						unsigned int startPoint = ((int)ns - n + 1 > 0 ? ns - n + 1 : 0);
+						for (unsigned int i = startPoint; i <= endPoint; ++i)
+							tempres -= ((double)waveforms[i] * 8192) * 0.5;
+
+						endPoint = (startPoint <= 1 ? 0 : startPoint - 1);
+						startPoint = ((int)endPoint - n + 1 > 0 ? endPoint - n + 1 : 0);
+						for (unsigned int i = startPoint; i <= endPoint; ++i)
+							tempres += ((double)waveforms[i] * 8192) * 1;
+
+						endPoint = (startPoint <= 1 ? 0 : startPoint - 1);
+						startPoint = ((int)endPoint - n + 1 > 0 ? endPoint - n + 1 : 0);
+						for (unsigned int i = startPoint; i <= endPoint; ++i)
+							tempres -= ((double)waveforms[i] * 8192) * 0.5;
+						if (tempres > filterResponse)
+							filterResponse = tempres;
+					}
+					filtertree->Fill();
+					if (charge > chargecut)
+					{
+						h_responsepop->Fill(n, filterResponse);
+					}
+
+					if (charge <= chargecut)
+					{
+						h_responsepopno->Fill(n, filterResponse);
+					}
+				}
+				numspes++;
 			}
 			if (fillt)
 				npulses = passedpulses;
@@ -399,6 +466,27 @@ int main(int argc, char* argv[])
 		h_avgphd->Scale(1.0 / numavp);
 		h_avgphd->Write();
 		event->Write();
+		filtertree->Write();
+		h_responsepop->Scale(1.0 / (double)popscale);
+		h_responsepopno->Scale(1.0 / (double)popscaleno);
+		for (int id = 0; id < h_responsepop->GetNbinsX(); id++)
+		{
+			float totEff = 0;
+			float totEffNo = 0;
+			int maxth = h_responsepop->GetNbinsY();
+			for (int ith = maxth; ith > 0; ith--)
+			{
+				totEff += h_responsepop->GetBinContent(id, ith);
+				h_responseEff->SetBinContent(id, ith, totEff);
+				totEffNo += h_responsepopno->GetBinContent(id, ith);
+				h_responseEffno->SetBinContent(id, ith, totEffNo);
+			}
+		}
+		std::cout << numspes << " SPEs in tree" << std::endl;
+		h_responsepop->Write();
+		h_responseEff->Write();
+		h_responsepopno->Write();
+		h_responseEffno->Write();
 	}
 
 	fout->Write();
