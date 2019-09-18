@@ -134,6 +134,7 @@ float pulse_length5[kMaxPulses];
 float pulse_length1[kMaxPulses];
 float pulse_length05[kMaxPulses];
 float CalibratedTime[kMaxPulses];
+float pulseFWHM[kMaxPulses];
 // float found_pulses[kMaxPulses][kMaxPulseSamples];
 // int found_pulses_nsamples[kMaxPulses];
 // float windowratio;
@@ -154,8 +155,8 @@ float event_baseline;
 float event_rms;
 float event_windowCharge;
 
-int windowstart = 1180;
-int windowfin = 1250;
+int windowstart = 1190;
+int windowfin = 1230;
 int npulses = 0;
 // vector<double> vlivetime;
 
@@ -206,7 +207,7 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 	// cout<<" vector size is : "<<v.size()<<endl;
 	// getchar();
 	// Let's looking for the Pulses
-	for (int i = 0; i < v.size() - windowSize; i++)
+	for (int i = baseline_samples_set; i < v.size() - windowSize; i++)
 	{
 		// std::cout << "Sample " << i << std::endl;
 		double integral = SimpsIntegral(v, b, i, i + windowSize);
@@ -359,6 +360,25 @@ void extract_event(vector<float>& v, double b, double rms, int nos, int trigger 
 					temp_ten_charge += charge_v[npulses - 1];
 				if (left < baseline_samples_set)
 					skipevent = false;
+
+				float halfmax = max / 2.0;
+				int leftfwhm = temp_peak;
+				int rightfwhm = temp_peak;
+				for (int j = temp_peak; j > left; --j)
+				{
+					if ((v[j] - b) > halfmax)
+						continue;
+					leftfwhm = j;
+					break;
+				}
+				for (int j = temp_peak; j < right; ++j)
+				{
+					if ((v[j] - b) > halfmax)
+						continue;
+					rightfwhm = j;
+					break;
+				}
+				pulseFWHM[npulses - 1] = rightfwhm - leftfwhm;
 			}
 			else
 			{
@@ -730,6 +750,7 @@ int main(int argc, char* argv[])
 	event->Branch("fPulseCharge_pC", charge_v, "charge_v[npulses]/F");
 	event->Branch("fPulsePeakTime", amplitude_position, "amplitude_position[npulses]/F");
 	event->Branch("fCalibratedTime", CalibratedTime, "CalibratedTime[npulses]/F");
+	event->Branch("fFWHM", pulseFWHM, "pulseFWHM[npulses]/F");
 	// event->Branch("windowratio", &windowRatio);
 	event->Branch("fBigStep", biggeststep, "biggeststep[npulses]/F");
 	event->Branch("fPulseLength05", pulse_length05, "pulse_length05[npulses]/F");
